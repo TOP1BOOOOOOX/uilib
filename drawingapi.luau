@@ -1481,7 +1481,7 @@ function CompkillerLib:CreateWindow(ConfigurationTable)
             TabInputHook()
         end
         
-        function TabAPI:CreateSection(SectionConfigTable)
+       function TabAPI:CreateSection(SectionConfigTable)
             local SectionConfig = SectionConfigTable or {}
             local SectionName = SectionConfig.Name or "Data Section"
             local SectionSide = SectionConfig.Side or "Left"
@@ -1600,6 +1600,9 @@ function CompkillerLib:CreateWindow(ConfigurationTable)
                 end
             end
             
+            -- ==============================================================================
+            -- SUB-COMPONENT: TOGGLE
+            -- ==============================================================================
             function SectionAPI:AddToggle(ToggleConfigTable)
                 local ToggleConfig = ToggleConfigTable or {}
                 local ToggleName = ToggleConfig.Name or "Toggle"
@@ -1629,9 +1632,7 @@ function CompkillerLib:CreateWindow(ConfigurationTable)
                 CheckboxOut.Size = Vector2.new(CheckboxSize, CheckboxSize)
                 CheckboxOut.Position = Vector2.new(12, 3)
                 local OutlineColor = ThemeConfig.SectionOutline
-                if ToggleAPI.Value == true then
-                    OutlineColor = ThemeConfig.AccentPrimary
-                end
+                if ToggleAPI.Value == true then OutlineColor = ThemeConfig.AccentPrimary end
                 CheckboxOut.Color = OutlineColor
                 CheckboxOut.Filled = false
                 CheckboxOut.ZIndex = 107
@@ -1643,9 +1644,7 @@ function CompkillerLib:CreateWindow(ConfigurationTable)
                 CheckboxFill.Position = Vector2.new(13, 4)
                 CheckboxFill.Color = ThemeConfig.AccentPrimary
                 local FillTransparency = 0
-                if ToggleAPI.Value == true then
-                    FillTransparency = 1
-                end
+                if ToggleAPI.Value == true then FillTransparency = 1 end
                 CheckboxFill.Transparency = FillTransparency
                 CheckboxFill.ZIndex = 107
                 ElementCanvas:AddChild(CheckboxFill)
@@ -1655,9 +1654,7 @@ function CompkillerLib:CreateWindow(ConfigurationTable)
                 ToggleLabel.Size = 13
                 ToggleLabel.Position = Vector2.new(32, 2)
                 local LabelColor = ThemeConfig.TextMuted
-                if ToggleAPI.Value == true then
-                    LabelColor = ThemeConfig.TextPrimary
-                end
+                if ToggleAPI.Value == true then LabelColor = ThemeConfig.TextPrimary end
                 ToggleLabel.Color = LabelColor
                 ToggleLabel.ZIndex = 106
                 ElementCanvas:AddChild(ToggleLabel)
@@ -1668,43 +1665,1354 @@ function CompkillerLib:CreateWindow(ConfigurationTable)
                     ToggleAPI.Value = NewValue
                     
                     local TargetTrans = 0
-                    if NewValue == true then
-                        TargetTrans = 1
-                    end
+                    if NewValue == true then TargetTrans = 1 end
                     local FillProps = {Transparency = TargetTrans}
                     Animator.ConstructTween(CheckboxFill, FillProps, 0.2, "Quint", "Out")
                     
                     local TargetOutCol = ThemeConfig.SectionOutline
-                    if NewValue == true then
-                        TargetOutCol = ThemeConfig.AccentPrimary
-                    end
+                    if NewValue == true then TargetOutCol = ThemeConfig.AccentPrimary end
                     local OutProps = {Color = TargetOutCol}
                     Animator.ConstructTween(CheckboxOut, OutProps, 0.2, "Quint", "Out")
                     
                     local TargetLabelCol = ThemeConfig.TextMuted
-                    if NewValue == true then
-                        TargetLabelCol = ThemeConfig.TextPrimary
-                    end
+                    if NewValue == true then TargetLabelCol = ThemeConfig.TextPrimary end
                     local LabelProps = {Color = TargetLabelCol}
                     Animator.ConstructTween(ToggleLabel, LabelProps, 0.2, "Quint", "Out")
                     
                     local CallbackFunc = ToggleConfig.Callback
-                    if CallbackFunc ~= nil then
-                        task.spawn(CallbackFunc, NewValue)
-                    end
+                    if CallbackFunc ~= nil then task.spawn(CallbackFunc, NewValue) end
                 end
                 ElementCanvas.InputBegan = InputBeganHook
                 
                 CompkillerLib.ToggledFlags[ToggleFlag] = ToggleAPI
                 RefreshLayoutsFunction()
-                
                 return ToggleAPI
+            end
+            
+            -- ==============================================================================
+            -- SUB-COMPONENT: SLIDER
+            -- ==============================================================================
+            function SectionAPI:AddSlider(SliderConfigTable)
+                local SliderConfig = SliderConfigTable or {}
+                local SliderName = SliderConfig.Name or "Value Slider"
+                local SliderMin = SliderConfig.Min or 0
+                local SliderMax = SliderConfig.Max or 100
+                local DefaultRaw = SliderConfig.Default or SliderMin
+                local SliderDefault = MathLib.Clamp(DefaultRaw, SliderMin, SliderMax)
+                local SliderDecimals = SliderConfig.Decimals or 0
+                local RandomId = tostring(math.random(100000, 999999))
+                local SliderFlag = SliderConfig.Flag or RandomId
+                
+                local SliderAPI = { Value = SliderDefault }
+                
+                local ElementHeight = 36
+                local ElementCanvas = VirtualDOM.CreateInstance("Square")
+                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, ElementHeight)
+                ElementCanvas.Transparency = 0
+                ItemContainer:AddChild(ElementCanvas)
+                
+                local SliderLabel = VirtualDOM.CreateInstance("Text")
+                SliderLabel.Text = SliderName
+                SliderLabel.Size = 13
+                SliderLabel.Position = Vector2.new(12, 2)
+                SliderLabel.Color = ThemeConfig.TextMuted
+                SliderLabel.ZIndex = 106
+                ElementCanvas:AddChild(SliderLabel)
+                
+                local ValueDisplay = VirtualDOM.CreateInstance("Text")
+                ValueDisplay.Text = tostring(SliderAPI.Value)
+                ValueDisplay.Size = 13
+                ValueDisplay.Position = Vector2.new(ElementCanvas.Size.X - 22, 2)
+                ValueDisplay.Color = ThemeConfig.TextPrimary
+                ValueDisplay.Center = true
+                ValueDisplay.ZIndex = 107
+                ElementCanvas:AddChild(ValueDisplay)
+                
+                local RailBackground = VirtualDOM.CreateInstance("Square")
+                local RailWidth = ElementCanvas.Size.X - 24
+                local RailHeight = 10
+                RailBackground.Size = Vector2.new(RailWidth, RailHeight)
+                RailBackground.Position = Vector2.new(12, 20)
+                RailBackground.Color = ThemeConfig.ElementBackground
+                RailBackground.ZIndex = 106
+                ElementCanvas:AddChild(RailBackground)
+                
+                local RailOutline = VirtualDOM.CreateInstance("Square")
+                RailOutline.Size = RailBackground.Size
+                RailOutline.Position = RailBackground.Position
+                RailOutline.Color = ThemeConfig.SectionOutline
+                RailOutline.Filled = false
+                RailOutline.ZIndex = 107
+                ElementCanvas:AddChild(RailOutline)
+                
+                local Difference = SliderMax - SliderMin
+                local CurrentOffset = SliderAPI.Value - SliderMin
+                local ProgressPercentage = CurrentOffset / Difference
+                local FillWidth = RailBackground.Size.X * ProgressPercentage
+                
+                local RailFill = VirtualDOM.CreateInstance("Square")
+                RailFill.Size = Vector2.new(FillWidth, RailHeight)
+                RailFill.Position = RailBackground.Position
+                RailFill.Color = ThemeConfig.AccentPrimary
+                RailFill.ZIndex = 107
+                ElementCanvas:AddChild(RailFill)
+                
+                local IsSliding = false
+                local ExecuteMathFunction = function()
+                    local MaxX = RailBackground.AbsoluteSize.X
+                    local MouseX = EngineState.MousePosition.X
+                    local RailAbsoluteX = RailBackground.AbsolutePosition.X
+                    local RelativeX = MouseX - RailAbsoluteX
+                    local ClampedRelativeX = MathLib.Clamp(RelativeX, 0, MaxX)
+                    
+                    local Percent = ClampedRelativeX / MaxX
+                    local ValueDifference = SliderMax - SliderMin
+                    local ScaledValue = ValueDifference * Percent
+                    local RawValue = SliderMin + ScaledValue
+                    
+                    local Power = math.pow(10, SliderDecimals)
+                    local Shifted = RawValue * Power
+                    local Rounded = math.floor(Shifted + 0.5)
+                    local CleanValue = Rounded / Power
+                    
+                    SliderAPI.Value = CleanValue
+                    ValueDisplay.Text = tostring(CleanValue)
+                    
+                    local NewFillWidth = MaxX * Percent
+                    local TweenProps = {Size = Vector2.new(NewFillWidth, RailHeight)}
+                    Animator.ConstructTween(RailFill, TweenProps, 0.05, "Linear", "Out")
+                    
+                    local CallbackFunc = SliderConfig.Callback
+                    if CallbackFunc ~= nil then task.spawn(CallbackFunc, SliderAPI.Value) end
+                end
+                
+                RailBackground.InputBegan = function(InputData)
+                    IsSliding = true
+                    local LabelProps = {Color = ThemeConfig.TextPrimary}
+                    Animator.ConstructTween(SliderLabel, LabelProps, 0.2, "Quad", "Out")
+                    ExecuteMathFunction()
+                end
+                
+                RunService.RenderStepped:Connect(function()
+                    if IsSliding == true then
+                        local MouseDown = EngineState.IsMouseDown
+                        if MouseDown == false then
+                            IsSliding = false
+                            local LabelProps = {Color = ThemeConfig.TextMuted}
+                            Animator.ConstructTween(SliderLabel, LabelProps, 0.2, "Quad", "Out")
+                        else
+                            ExecuteMathFunction()
+                        end
+                    end
+                end)
+                
+                CompkillerLib.ToggledFlags[SliderFlag] = SliderAPI
+                RefreshLayoutsFunction()
+                return SliderAPI
+            end
+
+            -- ==============================================================================
+            -- SUB-COMPONENT: DROPDOWN
+            -- ==============================================================================
+            function SectionAPI:AddDropdown(DropdownConfigTable)
+                local DropConfig = DropdownConfigTable or {}
+                local DropName = DropConfig.Name or "Dropdown Selection"
+                local DropValues = DropConfig.Values or {"Option 1", "Option 2", "Option 3"}
+                local DropDefault = DropConfig.Default or DropValues[1]
+                local RandomId = tostring(math.random(100000, 999999))
+                local DropFlag = DropConfig.Flag or RandomId
+                local MaxVisibleItems = DropConfig.MaxItems or 5
+                
+                local DropAPI = { Value = DropDefault, IsOpen = false, ScrollIndex = 0 }
+                
+                local ElementHeight = 42
+                local ElementCanvas = VirtualDOM.CreateInstance("Square")
+                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, ElementHeight)
+                ElementCanvas.Transparency = 0
+                ItemContainer:AddChild(ElementCanvas)
+                
+                local DropLabel = VirtualDOM.CreateInstance("Text")
+                DropLabel.Text = DropName
+                DropLabel.Size = 13
+                DropLabel.Position = Vector2.new(12, 2)
+                DropLabel.Color = ThemeConfig.TextMuted
+                DropLabel.ZIndex = 106
+                ElementCanvas:AddChild(DropLabel)
+                
+                local BoxWidth = ElementCanvas.Size.X - 24
+                local BoxHeight = 20
+                local DropBox = VirtualDOM.CreateInstance("Square")
+                DropBox.Size = Vector2.new(BoxWidth, BoxHeight)
+                DropBox.Position = Vector2.new(12, 18)
+                DropBox.Color = ThemeConfig.ElementBackground
+                DropBox.ZIndex = 106
+                ElementCanvas:AddChild(DropBox)
+                
+                local DropBoxOut = VirtualDOM.CreateInstance("Square")
+                DropBoxOut.Size = DropBox.Size
+                DropBoxOut.Position = DropBox.Position
+                DropBoxOut.Color = ThemeConfig.SectionOutline
+                DropBoxOut.Filled = false
+                DropBoxOut.ZIndex = 107
+                ElementCanvas:AddChild(DropBoxOut)
+                
+                local DropValueText = VirtualDOM.CreateInstance("Text")
+                DropValueText.Text = DropAPI.Value
+                DropValueText.Size = 13
+                DropValueText.Position = Vector2.new(18, 21)
+                DropValueText.Color = ThemeConfig.TextPrimary
+                DropValueText.ZIndex = 107
+                ElementCanvas:AddChild(DropValueText)
+                
+                local Indicator = VirtualDOM.CreateInstance("Text")
+                Indicator.Text = "+"
+                Indicator.Size = 13
+                Indicator.Position = Vector2.new(ElementCanvas.Size.X - 22, 21)
+                Indicator.Color = ThemeConfig.TextMuted
+                Indicator.ZIndex = 107
+                ElementCanvas:AddChild(Indicator)
+                
+                local DropContainer = VirtualDOM.CreateInstance("Square")
+                DropContainer.Size = Vector2.new(DropBox.Size.X, 0)
+                DropContainer.Position = Vector2.new(12, 40)
+                DropContainer.Color = ThemeConfig.SectionBackground
+                DropContainer.ZIndex = 250
+                DropContainer.Visible = false
+                DropContainer.FloatingLayer = true
+                DropContainer.ClipsDescendants = true
+                ElementCanvas:AddChild(DropContainer)
+                
+                local DropContainerOut = VirtualDOM.CreateInstance("Square")
+                DropContainerOut.Size = DropContainer.Size
+                DropContainerOut.Color = ThemeConfig.AccentPrimary
+                DropContainerOut.Filled = false
+                DropContainerOut.ZIndex = 251
+                DropContainer:AddChild(DropContainerOut)
+                
+                local ItemHeight = 20
+                local TotalItems = #DropValues
+                local VisibleItems = math.min(TotalItems, MaxVisibleItems)
+                local ContainerMaxHeight = VisibleItems * ItemHeight
+                
+                local ScrollContainer = VirtualDOM.CreateInstance("Square")
+                ScrollContainer.Size = Vector2.new(DropContainer.Size.X, TotalItems * ItemHeight)
+                ScrollContainer.Position = Vector2.new(0, 0)
+                ScrollContainer.Transparency = 0
+                ScrollContainer.ZIndex = 250
+                DropContainer:AddChild(ScrollContainer)
+                
+                local ScrollbarBg = VirtualDOM.CreateInstance("Square")
+                ScrollbarBg.Size = Vector2.new(4, ContainerMaxHeight)
+                ScrollbarBg.Position = Vector2.new(DropContainer.Size.X - 4, 0)
+                ScrollbarBg.Color = ThemeConfig.ElementBackground
+                ScrollbarBg.ZIndex = 252
+                DropContainer:AddChild(ScrollbarBg)
+                
+                local ScrollThumb = VirtualDOM.CreateInstance("Square")
+                local ThumbHeightRatio = VisibleItems / TotalItems
+                local ThumbHeight = ContainerMaxHeight * ThumbHeightRatio
+                ScrollThumb.Size = Vector2.new(4, ThumbHeight)
+                ScrollThumb.Position = Vector2.new(DropContainer.Size.X - 4, 0)
+                ScrollThumb.Color = ThemeConfig.AccentPrimary
+                ScrollThumb.ZIndex = 253
+                DropContainer:AddChild(ScrollThumb)
+                
+                if TotalItems <= MaxVisibleItems then
+                    ScrollbarBg.Visible = false
+                    ScrollThumb.Visible = false
+                end
+                
+                local GeneratedOptions = {}
+                local BuildDropdownListFunction = function()
+                    local CurrentY = 0
+                    for Index, OptionString in ipairs(DropValues) do
+                        local OptBox = VirtualDOM.CreateInstance("Square")
+                        OptBox.Size = Vector2.new(DropContainer.Size.X - 4, ItemHeight)
+                        OptBox.Position = Vector2.new(0, CurrentY)
+                        OptBox.Color = ThemeConfig.ElementBackground
+                        OptBox.ZIndex = 251
+                        ScrollContainer:AddChild(OptBox)
+                        
+                        local OptText = VirtualDOM.CreateInstance("Text")
+                        OptText.Text = OptionString
+                        OptText.Size = 13
+                        OptText.Position = Vector2.new(8, 3)
+                        local TextColor = ThemeConfig.TextMuted
+                        if OptionString == DropAPI.Value then TextColor = ThemeConfig.AccentPrimary end
+                        OptText.Color = TextColor
+                        OptText.ZIndex = 252
+                        OptBox:AddChild(OptText)
+                        
+                        OptBox.MouseEnter = function()
+                            local HoverProps = {Color = ThemeConfig.ElementHover}
+                            Animator.ConstructTween(OptBox, HoverProps, 0.1, "Quad", "Out")
+                        end
+                        
+                        OptBox.MouseLeave = function()
+                            local LeaveProps = {Color = ThemeConfig.ElementBackground}
+                            Animator.ConstructTween(OptBox, LeaveProps, 0.1, "Quad", "Out")
+                        end
+                        
+                        OptBox.InputBegan = function(InputData)
+                            DropAPI.Value = OptionString
+                            DropValueText.Text = OptionString
+                            DropAPI.IsOpen = false
+                            DropContainer.Visible = false
+                            Indicator.Text = "+"
+                            local OutProps = {Color = ThemeConfig.SectionOutline}
+                            Animator.ConstructTween(DropBoxOut, OutProps, 0.2, "Quint", "Out")
+                            
+                            local CallbackFunc = DropConfig.Callback
+                            if CallbackFunc ~= nil then task.spawn(CallbackFunc, DropAPI.Value) end
+                        end
+                        
+                        table.insert(GeneratedOptions, OptBox)
+                        CurrentY = CurrentY + ItemHeight
+                    end
+                end
+                
+                local UpdateScrollPhysics = function()
+                    local MaxScrollIndex = TotalItems - VisibleItems
+                    DropAPI.ScrollIndex = MathLib.Clamp(DropAPI.ScrollIndex, 0, MaxScrollIndex)
+                    
+                    local TargetY = -(DropAPI.ScrollIndex * ItemHeight)
+                    local ScrollProps = {Position = Vector2.new(0, TargetY)}
+                    Animator.ConstructTween(ScrollContainer, ScrollProps, 0.15, "Quad", "Out")
+                    
+                    local ScrollProgress = 0
+                    if MaxScrollIndex > 0 then ScrollProgress = DropAPI.ScrollIndex / MaxScrollIndex end
+                    local ThumbMaxY = ContainerMaxHeight - ThumbHeight
+                    local ThumbTargetY = ThumbMaxY * ScrollProgress
+                    local ThumbProps = {Position = Vector2.new(DropContainer.Size.X - 4, ThumbTargetY)}
+                    Animator.ConstructTween(ScrollThumb, ThumbProps, 0.15, "Quad", "Out")
+                end
+                
+                DropContainer.MouseScroll = function(ZDelta)
+                    if TotalItems <= MaxVisibleItems then return end
+                    if ZDelta > 0 then DropAPI.ScrollIndex = DropAPI.ScrollIndex - 1
+                    elseif ZDelta < 0 then DropAPI.ScrollIndex = DropAPI.ScrollIndex + 1 end
+                    UpdateScrollPhysics()
+                end
+                
+                DropBox.InputBegan = function(InputData)
+                    local CurrentState = DropAPI.IsOpen
+                    local NewState = not CurrentState
+                    DropAPI.IsOpen = NewState
+                    
+                    if NewState == true then
+                        if #GeneratedOptions == 0 then BuildDropdownListFunction() end
+                        DropContainer.Size = Vector2.new(DropBox.Size.X, ContainerMaxHeight)
+                        DropContainerOut.Size = DropContainer.Size
+                        DropContainer.Visible = true
+                        Indicator.Text = "-"
+                        local OutProps = {Color = ThemeConfig.AccentPrimary}
+                        Animator.ConstructTween(DropBoxOut, OutProps, 0.2, "Quint", "Out")
+                    else
+                        DropContainer.Visible = false
+                        Indicator.Text = "+"
+                        local OutProps = {Color = ThemeConfig.SectionOutline}
+                        Animator.ConstructTween(DropBoxOut, OutProps, 0.2, "Quint", "Out")
+                    end
+                end
+                
+                CompkillerLib.ToggledFlags[DropFlag] = DropAPI
+                RefreshLayoutsFunction()
+                return DropAPI
+            end
+
+            -- ==============================================================================
+            -- SUB-COMPONENT: MULTI-DROPDOWN
+            -- ==============================================================================
+            function SectionAPI:AddMultiDropdown(MultiDropConfigTable)
+                local DropConfig = MultiDropConfigTable or {}
+                local DropName = DropConfig.Name or "Multi Selection"
+                local DropValues = DropConfig.Values or {"Option 1", "Option 2"}
+                local DropDefault = DropConfig.Default or {}
+                local RandomId = tostring(math.random(100000, 999999))
+                local DropFlag = DropConfig.Flag or RandomId
+                local MaxVisibleItems = DropConfig.MaxItems or 5
+                
+                local DropAPI = { Value = {}, IsOpen = false, ScrollIndex = 0 }
+                for Index, DefaultVal in ipairs(DropDefault) do DropAPI.Value[DefaultVal] = true end
+                
+                local ElementHeight = 42
+                local ElementCanvas = VirtualDOM.CreateInstance("Square")
+                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, ElementHeight)
+                ElementCanvas.Transparency = 0
+                ItemContainer:AddChild(ElementCanvas)
+                
+                local DropLabel = VirtualDOM.CreateInstance("Text")
+                DropLabel.Text = DropName
+                DropLabel.Size = 13
+                DropLabel.Position = Vector2.new(12, 2)
+                DropLabel.Color = ThemeConfig.TextMuted
+                DropLabel.ZIndex = 106
+                ElementCanvas:AddChild(DropLabel)
+                
+                local BoxWidth = ElementCanvas.Size.X - 24
+                local BoxHeight = 20
+                local DropBox = VirtualDOM.CreateInstance("Square")
+                DropBox.Size = Vector2.new(BoxWidth, BoxHeight)
+                DropBox.Position = Vector2.new(12, 18)
+                DropBox.Color = ThemeConfig.ElementBackground
+                DropBox.ZIndex = 106
+                ElementCanvas:AddChild(DropBox)
+                
+                local DropBoxOut = VirtualDOM.CreateInstance("Square")
+                DropBoxOut.Size = DropBox.Size
+                DropBoxOut.Position = DropBox.Position
+                DropBoxOut.Color = ThemeConfig.SectionOutline
+                DropBoxOut.Filled = false
+                DropBoxOut.ZIndex = 107
+                ElementCanvas:AddChild(DropBoxOut)
+                
+                local function FormatDisplayString()
+                    local ActiveItems = {}
+                    for ItemName, IsActive in pairs(DropAPI.Value) do
+                        if IsActive == true then table.insert(ActiveItems, tostring(ItemName)) end
+                    end
+                    if #ActiveItems == 0 then return "None"
+                    elseif #ActiveItems == 1 then return ActiveItems[1]
+                    else return tostring(#ActiveItems) .. " Selected" end
+                end
+                
+                local DropValueText = VirtualDOM.CreateInstance("Text")
+                DropValueText.Text = FormatDisplayString()
+                DropValueText.Size = 13
+                DropValueText.Position = Vector2.new(18, 21)
+                local InitialTextColor = ThemeConfig.TextDisabled
+                if FormatDisplayString() ~= "None" then InitialTextColor = ThemeConfig.TextPrimary end
+                DropValueText.Color = InitialTextColor
+                DropValueText.ZIndex = 107
+                ElementCanvas:AddChild(DropValueText)
+                
+                local Indicator = VirtualDOM.CreateInstance("Text")
+                Indicator.Text = "+"
+                Indicator.Size = 13
+                Indicator.Position = Vector2.new(ElementCanvas.Size.X - 22, 21)
+                Indicator.Color = ThemeConfig.TextMuted
+                Indicator.ZIndex = 107
+                ElementCanvas:AddChild(Indicator)
+                
+                local DropContainer = VirtualDOM.CreateInstance("Square")
+                DropContainer.Size = Vector2.new(DropBox.Size.X, 0)
+                DropContainer.Position = Vector2.new(12, 40)
+                DropContainer.Color = ThemeConfig.SectionBackground
+                DropContainer.ZIndex = 250
+                DropContainer.Visible = false
+                DropContainer.FloatingLayer = true
+                DropContainer.ClipsDescendants = true
+                ElementCanvas:AddChild(DropContainer)
+                
+                local DropContainerOut = VirtualDOM.CreateInstance("Square")
+                DropContainerOut.Size = DropContainer.Size
+                DropContainerOut.Color = ThemeConfig.AccentPrimary
+                DropContainerOut.Filled = false
+                DropContainerOut.ZIndex = 251
+                DropContainer:AddChild(DropContainerOut)
+                
+                local ItemHeight = 20
+                local TotalItems = #DropValues
+                local VisibleItems = math.min(TotalItems, MaxVisibleItems)
+                local ContainerMaxHeight = VisibleItems * ItemHeight
+                
+                local ScrollContainer = VirtualDOM.CreateInstance("Square")
+                ScrollContainer.Size = Vector2.new(DropContainer.Size.X, TotalItems * ItemHeight)
+                ScrollContainer.Position = Vector2.new(0, 0)
+                ScrollContainer.Transparency = 0
+                ScrollContainer.ZIndex = 250
+                DropContainer:AddChild(ScrollContainer)
+                
+                local ScrollbarBg = VirtualDOM.CreateInstance("Square")
+                ScrollbarBg.Size = Vector2.new(4, ContainerMaxHeight)
+                ScrollbarBg.Position = Vector2.new(DropContainer.Size.X - 4, 0)
+                ScrollbarBg.Color = ThemeConfig.ElementBackground
+                ScrollbarBg.ZIndex = 252
+                DropContainer:AddChild(ScrollbarBg)
+                
+                local ScrollThumb = VirtualDOM.CreateInstance("Square")
+                local ThumbHeightRatio = VisibleItems / TotalItems
+                local ThumbHeight = ContainerMaxHeight * ThumbHeightRatio
+                ScrollThumb.Size = Vector2.new(4, ThumbHeight)
+                ScrollThumb.Position = Vector2.new(DropContainer.Size.X - 4, 0)
+                ScrollThumb.Color = ThemeConfig.AccentPrimary
+                ScrollThumb.ZIndex = 253
+                DropContainer:AddChild(ScrollThumb)
+                
+                if TotalItems <= MaxVisibleItems then
+                    ScrollbarBg.Visible = false
+                    ScrollThumb.Visible = false
+                end
+                
+                local GeneratedOptions = {}
+                local BuildMultiListFunction = function()
+                    local CurrentY = 0
+                    for Index, OptionString in ipairs(DropValues) do
+                        local OptBox = VirtualDOM.CreateInstance("Square")
+                        OptBox.Size = Vector2.new(DropContainer.Size.X - 4, ItemHeight)
+                        OptBox.Position = Vector2.new(0, CurrentY)
+                        OptBox.Color = ThemeConfig.ElementBackground
+                        OptBox.ZIndex = 251
+                        ScrollContainer:AddChild(OptBox)
+                        
+                        local OptText = VirtualDOM.CreateInstance("Text")
+                        OptText.Text = OptionString
+                        OptText.Size = 13
+                        OptText.Position = Vector2.new(8, 3)
+                        local IsSelected = DropAPI.Value[OptionString] or false
+                        local TextColor = ThemeConfig.TextMuted
+                        if IsSelected == true then TextColor = ThemeConfig.AccentPrimary end
+                        OptText.Color = TextColor
+                        OptText.ZIndex = 252
+                        OptBox:AddChild(OptText)
+                        
+                        OptBox.MouseEnter = function()
+                            local HoverProps = {Color = ThemeConfig.ElementHover}
+                            Animator.ConstructTween(OptBox, HoverProps, 0.1, "Quad", "Out")
+                        end
+                        
+                        OptBox.MouseLeave = function()
+                            local LeaveProps = {Color = ThemeConfig.ElementBackground}
+                            Animator.ConstructTween(OptBox, LeaveProps, 0.1, "Quad", "Out")
+                        end
+                        
+                        OptBox.InputBegan = function(InputData)
+                            local CurrentSelectionState = DropAPI.Value[OptionString] or false
+                            local NewSelectionState = not CurrentSelectionState
+                            
+                            if NewSelectionState == true then
+                                DropAPI.Value[OptionString] = true
+                                local SelectProps = {Color = ThemeConfig.AccentPrimary}
+                                Animator.ConstructTween(OptText, SelectProps, 0.2, "Quint", "Out")
+                            else
+                                DropAPI.Value[OptionString] = nil
+                                local DeselectProps = {Color = ThemeConfig.TextMuted}
+                                Animator.ConstructTween(OptText, DeselectProps, 0.2, "Quint", "Out")
+                            end
+                            
+                            local NewDisplayStr = FormatDisplayString()
+                            DropValueText.Text = NewDisplayStr
+                            if NewDisplayStr == "None" then DropValueText.Color = ThemeConfig.TextDisabled
+                            else DropValueText.Color = ThemeConfig.TextPrimary end
+                            
+                            local CallbackFunc = MultiDropConfigTable.Callback
+                            if CallbackFunc ~= nil then task.spawn(CallbackFunc, DropAPI.Value) end
+                        end
+                        
+                        table.insert(GeneratedOptions, OptBox)
+                        CurrentY = CurrentY + ItemHeight
+                    end
+                end
+                
+                local UpdateMultiScrollPhysics = function()
+                    local MaxScrollIndex = TotalItems - VisibleItems
+                    DropAPI.ScrollIndex = MathLib.Clamp(DropAPI.ScrollIndex, 0, MaxScrollIndex)
+                    
+                    local TargetY = -(DropAPI.ScrollIndex * ItemHeight)
+                    local ScrollProps = {Position = Vector2.new(0, TargetY)}
+                    Animator.ConstructTween(ScrollContainer, ScrollProps, 0.15, "Quad", "Out")
+                    
+                    local ScrollProgress = 0
+                    if MaxScrollIndex > 0 then ScrollProgress = DropAPI.ScrollIndex / MaxScrollIndex end
+                    local ThumbMaxY = ContainerMaxHeight - ThumbHeight
+                    local ThumbTargetY = ThumbMaxY * ScrollProgress
+                    local ThumbProps = {Position = Vector2.new(DropContainer.Size.X - 4, ThumbTargetY)}
+                    Animator.ConstructTween(ScrollThumb, ThumbProps, 0.15, "Quad", "Out")
+                end
+                
+                DropContainer.MouseScroll = function(ZDelta)
+                    if TotalItems <= MaxVisibleItems then return end
+                    if ZDelta > 0 then DropAPI.ScrollIndex = DropAPI.ScrollIndex - 1
+                    elseif ZDelta < 0 then DropAPI.ScrollIndex = DropAPI.ScrollIndex + 1 end
+                    UpdateMultiScrollPhysics()
+                end
+                
+                DropBox.InputBegan = function(InputData)
+                    local CurrentState = DropAPI.IsOpen
+                    local NewState = not CurrentState
+                    DropAPI.IsOpen = NewState
+                    
+                    if NewState == true then
+                        if #GeneratedOptions == 0 then BuildMultiListFunction() end
+                        DropContainer.Size = Vector2.new(DropBox.Size.X, ContainerMaxHeight)
+                        DropContainerOut.Size = DropContainer.Size
+                        DropContainer.Visible = true
+                        Indicator.Text = "-"
+                        local OutProps = {Color = ThemeConfig.AccentPrimary}
+                        Animator.ConstructTween(DropBoxOut, OutProps, 0.2, "Quint", "Out")
+                    else
+                        DropContainer.Visible = false
+                        Indicator.Text = "+"
+                        local OutProps = {Color = ThemeConfig.SectionOutline}
+                        Animator.ConstructTween(DropBoxOut, OutProps, 0.2, "Quint", "Out")
+                    end
+                end
+                
+                CompkillerLib.ToggledFlags[DropFlag] = DropAPI
+                RefreshLayoutsFunction()
+                return DropAPI
+            end
+            
+            -- ==============================================================================
+            -- SUB-COMPONENT: COLOR PICKER
+            -- ==============================================================================
+            function SectionAPI:AddColorPicker(ColorConfigTable)
+                local ColorConfig = ColorConfigTable or {}
+                local ColorName = ColorConfig.Name or "Color Picker"
+                local DefaultColor = ColorConfig.Default or Color3.fromRGB(255, 255, 255)
+                local RandomId = tostring(math.random(100000, 999999))
+                local ColorFlag = ColorConfig.Flag or RandomId
+                
+                local ColorAPI = { Value = DefaultColor, IsOpen = false }
+                
+                local ElementHeight = 20
+                local ElementCanvas = VirtualDOM.CreateInstance("Square")
+                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, ElementHeight)
+                ElementCanvas.Transparency = 0
+                ItemContainer:AddChild(ElementCanvas)
+                
+                local ColorLabel = VirtualDOM.CreateInstance("Text")
+                ColorLabel.Text = ColorName
+                ColorLabel.Size = 13
+                ColorLabel.Position = Vector2.new(12, 3)
+                ColorLabel.Color = ThemeConfig.TextMuted
+                ColorLabel.ZIndex = 106
+                ElementCanvas:AddChild(ColorLabel)
+                
+                local DisplayBox = VirtualDOM.CreateInstance("Square")
+                DisplayBox.Size = Vector2.new(24, 12)
+                DisplayBox.Position = Vector2.new(ElementCanvas.Size.X - 36, 4)
+                DisplayBox.Color = ColorAPI.Value
+                DisplayBox.ZIndex = 106
+                ElementCanvas:AddChild(DisplayBox)
+                
+                local DisplayOut = VirtualDOM.CreateInstance("Square")
+                DisplayOut.Size = DisplayBox.Size
+                DisplayOut.Position = DisplayBox.Position
+                DisplayOut.Color = ThemeConfig.SectionOutline
+                DisplayOut.Filled = false
+                DisplayOut.ZIndex = 107
+                ElementCanvas:AddChild(DisplayOut)
+                
+                local PickerWindow = VirtualDOM.CreateInstance("Square")
+                PickerWindow.Size = Vector2.new(160, 160)
+                PickerWindow.Position = Vector2.new(ElementCanvas.Size.X - 170, 20)
+                PickerWindow.Color = ThemeConfig.SectionBackground
+                PickerWindow.ZIndex = 300
+                PickerWindow.Visible = false
+                PickerWindow.FloatingLayer = true
+                ElementCanvas:AddChild(PickerWindow)
+                
+                local PickerOut = VirtualDOM.CreateInstance("Square")
+                PickerOut.Size = PickerWindow.Size
+                PickerOut.Color = ThemeConfig.AccentPrimary
+                PickerOut.Filled = false
+                PickerOut.ZIndex = 301
+                PickerWindow:AddChild(PickerOut)
+                
+                local SatValBox = VirtualDOM.CreateInstance("Square")
+                SatValBox.Size = Vector2.new(130, 140)
+                SatValBox.Position = Vector2.new(10, 10)
+                local CurrentHue, CurrentSat, CurrentVal = MathLib.RGBToHSV(ColorAPI.Value)
+                SatValBox.Color = MathLib.HSVToRGB(CurrentHue, 1, 1)
+                SatValBox.ZIndex = 302
+                PickerWindow:AddChild(SatValBox)
+                
+                local WhiteOverlay = VirtualDOM.CreateInstance("Square")
+                WhiteOverlay.Size = SatValBox.Size
+                WhiteOverlay.Position = SatValBox.Position
+                WhiteOverlay.Color = Color3.fromRGB(255, 255, 255)
+                WhiteOverlay.Transparency = 0.5 
+                WhiteOverlay.ZIndex = 303
+                PickerWindow:AddChild(WhiteOverlay)
+                
+                local BlackOverlay = VirtualDOM.CreateInstance("Square")
+                BlackOverlay.Size = SatValBox.Size
+                BlackOverlay.Position = SatValBox.Position
+                BlackOverlay.Color = Color3.fromRGB(0, 0, 0)
+                BlackOverlay.Transparency = 0.5
+                BlackOverlay.ZIndex = 304
+                PickerWindow:AddChild(BlackOverlay)
+                
+                local HueBar = VirtualDOM.CreateInstance("Square")
+                HueBar.Size = Vector2.new(10, 140)
+                HueBar.Position = Vector2.new(145, 10)
+                HueBar.Color = Color3.fromRGB(255, 0, 0)
+                HueBar.ZIndex = 302
+                PickerWindow:AddChild(HueBar)
+                VisualEffects.GenerateGradient(HueBar, HueBar.Size, Color3.fromRGB(255, 0, 0), Color3.fromRGB(255, 0, 255), 6, true)
+                
+                local HueCursor = VirtualDOM.CreateInstance("Square")
+                HueCursor.Size = Vector2.new(14, 4)
+                HueCursor.Position = Vector2.new(143, 10 + (140 * (1 - CurrentHue)) - 2)
+                HueCursor.Color = Color3.fromRGB(255, 255, 255)
+                HueCursor.ZIndex = 310
+                PickerWindow:AddChild(HueCursor)
+                
+                local HueCursorOut = VirtualDOM.CreateInstance("Square")
+                HueCursorOut.Size = HueCursor.Size
+                HueCursorOut.Position = HueCursor.Position
+                HueCursorOut.Color = Color3.fromRGB(0, 0, 0)
+                HueCursorOut.Filled = false
+                HueCursorOut.ZIndex = 311
+                PickerWindow:AddChild(HueCursorOut)
+                
+                local SVDot = VirtualDOM.CreateInstance("Square")
+                SVDot.Size = Vector2.new(6, 6)
+                SVDot.Position = Vector2.new(10 + (130 * CurrentSat) - 3, 10 + (140 * (1 - CurrentVal)) - 3)
+                SVDot.Color = Color3.fromRGB(255, 255, 255)
+                SVDot.ZIndex = 310
+                PickerWindow:AddChild(SVDot)
+                
+                local SVDotOut = VirtualDOM.CreateInstance("Square")
+                SVDotOut.Size = SVDot.Size
+                SVDotOut.Position = SVDot.Position
+                SVDotOut.Color = Color3.fromRGB(0, 0, 0)
+                SVDotOut.Filled = false
+                SVDotOut.ZIndex = 311
+                PickerWindow:AddChild(SVDotOut)
+                
+                local IsHoldingHue = false
+                local IsHoldingSV = false
+                
+                local ForceColorUpdate = function()
+                    local NewColor = MathLib.HSVToRGB(CurrentHue, CurrentSat, CurrentVal)
+                    ColorAPI.Value = NewColor
+                    DisplayBox.Color = NewColor
+                    SatValBox.Color = MathLib.HSVToRGB(CurrentHue, 1, 1)
+                    if ColorConfig.Callback ~= nil then task.spawn(ColorConfig.Callback, ColorAPI.Value) end
+                end
+                
+                HueBar.InputBegan = function() IsHoldingHue = true end
+                SatValBox.InputBegan = function() IsHoldingSV = true end
+                
+                RunService.RenderStepped:Connect(function()
+                    if IsHoldingHue == true then
+                        if EngineState.IsMouseDown == false then IsHoldingHue = false return end
+                        local RelY = EngineState.MousePosition.Y - HueBar.AbsolutePosition.Y
+                        local ClampedY = MathLib.Clamp(RelY, 0, HueBar.AbsoluteSize.Y)
+                        CurrentHue = 1 - (ClampedY / HueBar.AbsoluteSize.Y)
+                        HueCursor.Position = Vector2.new(143, 10 + ClampedY - 2)
+                        HueCursorOut.Position = HueCursor.Position
+                        ForceColorUpdate()
+                    end
+                    if IsHoldingSV == true then
+                        if EngineState.IsMouseDown == false then IsHoldingSV = false return end
+                        local RelX = EngineState.MousePosition.X - SatValBox.AbsolutePosition.X
+                        local RelY = EngineState.MousePosition.Y - SatValBox.AbsolutePosition.Y
+                        local ClampedX = MathLib.Clamp(RelX, 0, SatValBox.AbsoluteSize.X)
+                        local ClampedY = MathLib.Clamp(RelY, 0, SatValBox.AbsoluteSize.Y)
+                        CurrentSat = ClampedX / SatValBox.AbsoluteSize.X
+                        CurrentVal = 1 - (ClampedY / SatValBox.AbsoluteSize.Y)
+                        SVDot.Position = Vector2.new(10 + ClampedX - 3, 10 + ClampedY - 3)
+                        SVDotOut.Position = SVDot.Position
+                        ForceColorUpdate()
+                    end
+                end)
+                
+                DisplayBox.InputBegan = function(InputData)
+                    ColorAPI.IsOpen = not ColorAPI.IsOpen
+                    PickerWindow.Visible = ColorAPI.IsOpen
+                    if ColorAPI.IsOpen == true then
+                        Animator.ConstructTween(ColorLabel, {Color = ThemeConfig.TextPrimary}, 0.2, "Quad", "Out")
+                        Animator.ConstructTween(DisplayOut, {Color = ThemeConfig.AccentPrimary}, 0.2, "Quad", "Out")
+                    else
+                        Animator.ConstructTween(ColorLabel, {Color = ThemeConfig.TextMuted}, 0.2, "Quad", "Out")
+                        Animator.ConstructTween(DisplayOut, {Color = ThemeConfig.SectionOutline}, 0.2, "Quad", "Out")
+                    end
+                end
+                
+                CompkillerLib.ToggledFlags[ColorFlag] = ColorAPI
+                RefreshLayoutsFunction()
+                return ColorAPI
+            end
+
+            -- ==============================================================================
+            -- SUB-COMPONENT: KEYBIND
+            -- ==============================================================================
+            function SectionAPI:AddKeybind(KeybindConfigTable)
+                local KeyConfig = KeybindConfigTable or {}
+                local KeyName = KeyConfig.Name or "Keybind Macro"
+                local DefaultKey = KeyConfig.Default or Enum.KeyCode.Unknown
+                local RandomId = tostring(math.random(100000, 999999))
+                local KeyFlag = KeyConfig.Flag or RandomId
+                
+                local KeyAPI = { Value = DefaultKey, IsBinding = false }
+                
+                local ElementHeight = 22
+                local ElementCanvas = VirtualDOM.CreateInstance("Square")
+                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, ElementHeight)
+                ElementCanvas.Transparency = 0
+                ItemContainer:AddChild(ElementCanvas)
+                
+                local KeyLabel = VirtualDOM.CreateInstance("Text")
+                KeyLabel.Text = KeyName
+                KeyLabel.Size = 13
+                KeyLabel.Position = Vector2.new(12, 4)
+                KeyLabel.Color = ThemeConfig.TextMuted
+                KeyLabel.ZIndex = 106
+                ElementCanvas:AddChild(KeyLabel)
+                
+                local BindBox = VirtualDOM.CreateInstance("Square")
+                BindBox.Size = Vector2.new(60, 16)
+                BindBox.Position = Vector2.new(ElementCanvas.Size.X - 72, 3)
+                BindBox.Color = ThemeConfig.ElementBackground
+                BindBox.ZIndex = 106
+                ElementCanvas:AddChild(BindBox)
+                
+                local BindOut = VirtualDOM.CreateInstance("Square")
+                BindOut.Size = BindBox.Size
+                BindOut.Position = BindBox.Position
+                BindOut.Color = ThemeConfig.SectionOutline
+                BindOut.Filled = false
+                BindOut.ZIndex = 107
+                ElementCanvas:AddChild(BindOut)
+                
+                local BindText = VirtualDOM.CreateInstance("Text")
+                BindText.Text = KeyAPI.Value == Enum.KeyCode.Unknown and "None" or KeyAPI.Value.Name
+                BindText.Size = 12
+                BindText.Position = Vector2.new(BindBox.Position.X + 30, 4)
+                BindText.Color = ThemeConfig.TextPrimary
+                BindText.Center = true
+                BindText.ZIndex = 107
+                ElementCanvas:AddChild(BindText)
+                
+                BindBox.MouseEnter = function()
+                    if KeyAPI.IsBinding == false then Animator.ConstructTween(BindBox, {Color = ThemeConfig.ElementHover}, 0.15, "Quad", "Out") end
+                end
+                
+                BindBox.MouseLeave = function()
+                    if KeyAPI.IsBinding == false then Animator.ConstructTween(BindBox, {Color = ThemeConfig.ElementBackground}, 0.15, "Quad", "Out") end
+                end
+                
+                BindBox.InputBegan = function(InputData)
+                    if KeyAPI.IsBinding == true then return end
+                    KeyAPI.IsBinding = true
+                    BindText.Text = "..."
+                    BindText.Color = ThemeConfig.AccentPrimary
+                    Animator.ConstructTween(BindOut, {Color = ThemeConfig.AccentPrimary}, 0.2, "Quint", "Out")
+                    
+                    local BindConnection
+                    BindConnection = UserInputService.InputBegan:Connect(function(KeyInput)
+                        local InputType = KeyInput.UserInputType
+                        if InputType == Enum.UserInputType.Keyboard then
+                            local PressedKey = KeyInput.KeyCode
+                            if PressedKey == Enum.KeyCode.Escape or PressedKey == Enum.KeyCode.Backspace then
+                                KeyAPI.Value = Enum.KeyCode.Unknown
+                                BindText.Text = "None"
+                            else
+                                KeyAPI.Value = PressedKey
+                                BindText.Text = PressedKey.Name
+                            end
+                            KeyAPI.IsBinding = false
+                            BindText.Color = ThemeConfig.TextPrimary
+                            Animator.ConstructTween(BindOut, {Color = ThemeConfig.SectionOutline}, 0.2, "Quint", "Out")
+                            BindConnection:Disconnect()
+                            if KeyConfig.Callback ~= nil then task.spawn(KeyConfig.Callback, KeyAPI.Value) end
+                        elseif InputType == Enum.UserInputType.MouseButton1 or InputType == Enum.UserInputType.MouseButton2 or InputType == Enum.UserInputType.MouseButton3 then
+                            KeyAPI.Value = InputType
+                            if InputType == Enum.UserInputType.MouseButton1 then BindText.Text = "MB1" end
+                            if InputType == Enum.UserInputType.MouseButton2 then BindText.Text = "MB2" end
+                            if InputType == Enum.UserInputType.MouseButton3 then BindText.Text = "MB3" end
+                            KeyAPI.IsBinding = false
+                            BindText.Color = ThemeConfig.TextPrimary
+                            Animator.ConstructTween(BindOut, {Color = ThemeConfig.SectionOutline}, 0.2, "Quint", "Out")
+                            BindConnection:Disconnect()
+                            if KeyConfig.Callback ~= nil then task.spawn(KeyConfig.Callback, KeyAPI.Value) end
+                        end
+                    end)
+                end
+                
+                CompkillerLib.ToggledFlags[KeyFlag] = KeyAPI
+                RefreshLayoutsFunction()
+                return KeyAPI
+            end
+
+            -- ==============================================================================
+            -- SUB-COMPONENT: TEXTBOX
+            -- ==============================================================================
+            function SectionAPI:AddTextBox(TextBoxConfigTable)
+                local TextConfig = TextBoxConfigTable or {}
+                local TextName = TextConfig.Name or "Text Input"
+                local TextDefault = TextConfig.Default or ""
+                local RandomId = tostring(math.random(100000, 999999))
+                local TextFlag = TextConfig.Flag or RandomId
+                local ClearOnFocus = TextConfig.ClearOnFocus or false
+                
+                local TextAPI = { Value = TextDefault, IsTyping = false }
+                
+                local ElementHeight = 44
+                local ElementCanvas = VirtualDOM.CreateInstance("Square")
+                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, ElementHeight)
+                ElementCanvas.Transparency = 0
+                ItemContainer:AddChild(ElementCanvas)
+                
+                local TextLabel = VirtualDOM.CreateInstance("Text")
+                TextLabel.Text = TextName
+                TextLabel.Size = 13
+                TextLabel.Position = Vector2.new(12, 2)
+                TextLabel.Color = ThemeConfig.TextMuted
+                TextLabel.ZIndex = 106
+                ElementCanvas:AddChild(TextLabel)
+                
+                local InputBox = VirtualDOM.CreateInstance("Square")
+                InputBox.Size = Vector2.new(ElementCanvas.Size.X - 24, 22)
+                InputBox.Position = Vector2.new(12, 18)
+                InputBox.Color = ThemeConfig.ElementBackground
+                InputBox.ZIndex = 106
+                ElementCanvas:AddChild(InputBox)
+                
+                local InputOut = VirtualDOM.CreateInstance("Square")
+                InputOut.Size = InputBox.Size
+                InputOut.Position = InputBox.Position
+                InputOut.Color = ThemeConfig.SectionOutline
+                InputOut.Filled = false
+                InputOut.ZIndex = 107
+                ElementCanvas:AddChild(InputOut)
+                
+                local InputText = VirtualDOM.CreateInstance("Text")
+                InputText.Text = TextAPI.Value == "" and "Enter text..." or TextAPI.Value
+                InputText.Size = 13
+                InputText.Position = Vector2.new(18, 22)
+                InputText.Color = TextAPI.Value == "" and ThemeConfig.TextDisabled or ThemeConfig.TextPrimary
+                InputText.ZIndex = 107
+                ElementCanvas:AddChild(InputText)
+                
+                local CursorBlink = VirtualDOM.CreateInstance("Square")
+                CursorBlink.Size = Vector2.new(1, 12)
+                CursorBlink.Position = Vector2.new(18, 23)
+                CursorBlink.Color = ThemeConfig.AccentPrimary
+                CursorBlink.ZIndex = 108
+                CursorBlink.Visible = false
+                ElementCanvas:AddChild(CursorBlink)
+                
+                local BlinkTimer = 0
+                RunService.RenderStepped:Connect(function(Delta)
+                    if TextAPI.IsTyping == true then
+                        BlinkTimer = BlinkTimer + Delta
+                        if BlinkTimer >= 0.5 then
+                            BlinkTimer = 0
+                            CursorBlink.Visible = not CursorBlink.Visible
+                        end
+                    else
+                        CursorBlink.Visible = false
+                    end
+                end)
+                
+                InputBox.InputBegan = function(InputData)
+                    if EngineState.TypingActive == true then return end
+                    EngineState.TypingActive = true
+                    EngineState.TypingElement = InputBox
+                    TextAPI.IsTyping = true
+                    if ClearOnFocus == true then TextAPI.Value = "" end
+                    
+                    Animator.ConstructTween(InputOut, {Color = ThemeConfig.AccentPrimary}, 0.2, "Quint", "Out")
+                    Animator.ConstructTween(TextLabel, {Color = ThemeConfig.TextPrimary}, 0.2, "Quint", "Out")
+                    
+                    InputText.Text = TextAPI.Value
+                    InputText.Color = ThemeConfig.TextPrimary
+                    local TextLength = InputText.RenderObject.TextBounds.X
+                    CursorBlink.Position = Vector2.new(18 + TextLength + 2, 23)
+                    CursorBlink.Visible = true
+                    
+                    local TypingConnection
+                    TypingConnection = UserInputService.InputBegan:Connect(function(KeyInput)
+                        local KeyCode = KeyInput.KeyCode
+                        if KeyCode == Enum.KeyCode.Return or KeyCode == Enum.KeyCode.Escape then
+                            EngineState.TypingActive = false
+                            EngineState.TypingElement = nil
+                            TextAPI.IsTyping = false
+                            
+                            Animator.ConstructTween(InputOut, {Color = ThemeConfig.SectionOutline}, 0.2, "Quint", "Out")
+                            Animator.ConstructTween(TextLabel, {Color = ThemeConfig.TextMuted}, 0.2, "Quint", "Out")
+                            
+                            if TextAPI.Value == "" then
+                                InputText.Text = "Enter text..."
+                                InputText.Color = ThemeConfig.TextDisabled
+                            else
+                                InputText.Text = TextAPI.Value
+                                InputText.Color = ThemeConfig.TextPrimary
+                            end
+                            TypingConnection:Disconnect()
+                            if TextConfig.Callback ~= nil then task.spawn(TextConfig.Callback, TextAPI.Value) end
+                        elseif KeyCode == Enum.KeyCode.Backspace then
+                            local CurrentLength = string.len(TextAPI.Value)
+                            if CurrentLength > 0 then
+                                TextAPI.Value = string.sub(TextAPI.Value, 1, CurrentLength - 1)
+                                InputText.Text = TextAPI.Value
+                                CursorBlink.Position = Vector2.new(18 + InputText.RenderObject.TextBounds.X + 2, 23)
+                            end
+                        else
+                            if KeyInput.UserInputType == Enum.UserInputType.Keyboard then
+                                local CharString = UserInputService:GetStringForKeyCode(KeyCode)
+                                local ShiftDown = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+                                if ShiftDown == true then
+                                    CharString = string.upper(CharString)
+                                    if KeyCode == Enum.KeyCode.One then CharString = "!" end
+                                    if KeyCode == Enum.KeyCode.Two then CharString = "@" end
+                                    if KeyCode == Enum.KeyCode.Three then CharString = "#" end
+                                    if KeyCode == Enum.KeyCode.Four then CharString = "$" end
+                                    if KeyCode == Enum.KeyCode.Five then CharString = "%" end
+                                    if KeyCode == Enum.KeyCode.Six then CharString = "^" end
+                                    if KeyCode == Enum.KeyCode.Seven then CharString = "&" end
+                                    if KeyCode == Enum.KeyCode.Eight then CharString = "*" end
+                                    if KeyCode == Enum.KeyCode.Nine then CharString = "(" end
+                                    if KeyCode == Enum.KeyCode.Zero then CharString = ")" end
+                                else
+                                    CharString = string.lower(CharString)
+                                    if KeyCode == Enum.KeyCode.Space then CharString = " " end
+                                end
+                                
+                                if string.match(CharString, "[%w%p%s]") and string.len(CharString) == 1 then
+                                    local ProjectedString = TextAPI.Value .. CharString
+                                    local ProjectedBounds = InputText.RenderObject.TextBounds.X
+                                    if ProjectedBounds < (InputBox.Size.X - 10) then
+                                        TextAPI.Value = ProjectedString
+                                        InputText.Text = TextAPI.Value
+                                        CursorBlink.Position = Vector2.new(18 + InputText.RenderObject.TextBounds.X + 2, 23)
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                end
+                
+                CompkillerLib.ToggledFlags[TextFlag] = TextAPI
+                RefreshLayoutsFunction()
+                return TextAPI
+            end
+            
+            -- ==============================================================================
+            -- SUB-COMPONENT: BUTTON
+            -- ==============================================================================
+            function SectionAPI:AddButton(ButtonConfigTable)
+                local BtnConfig = ButtonConfigTable or {}
+                local BtnName = BtnConfig.Name or "Execute Action"
+                
+                local ElementHeight = 28
+                local ElementCanvas = VirtualDOM.CreateInstance("Square")
+                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, ElementHeight)
+                ElementCanvas.Transparency = 0
+                ItemContainer:AddChild(ElementCanvas)
+                
+                local BtnWidth = ElementCanvas.Size.X - 24
+                local BtnBody = VirtualDOM.CreateInstance("Square")
+                BtnBody.Size = Vector2.new(BtnWidth, 22)
+                BtnBody.Position = Vector2.new(12, 3)
+                BtnBody.Color = ThemeConfig.ElementBackground
+                BtnBody.ZIndex = 106
+                BtnBody.ClipsDescendants = true
+                ElementCanvas:AddChild(BtnBody)
+                
+                local BtnOut = VirtualDOM.CreateInstance("Square")
+                BtnOut.Size = BtnBody.Size
+                BtnOut.Position = BtnBody.Position
+                BtnOut.Color = ThemeConfig.SectionOutline
+                BtnOut.Filled = false
+                BtnOut.ZIndex = 108
+                ElementCanvas:AddChild(BtnOut)
+                
+                local BtnLabel = VirtualDOM.CreateInstance("Text")
+                BtnLabel.Text = BtnName
+                BtnLabel.Size = 13
+                BtnLabel.Position = Vector2.new(ElementCanvas.Size.X / 2, 7)
+                BtnLabel.Color = ThemeConfig.TextPrimary
+                BtnLabel.Center = true
+                BtnLabel.ZIndex = 109
+                ElementCanvas:AddChild(BtnLabel)
+                
+                BtnBody.MouseEnter = function()
+                    Animator.ConstructTween(BtnBody, {Color = ThemeConfig.ElementHover}, 0.2, "Quad", "Out")
+                    Animator.ConstructTween(BtnOut, {Color = ThemeConfig.AccentPrimary}, 0.2, "Quad", "Out")
+                end
+                
+                BtnBody.MouseLeave = function()
+                    Animator.ConstructTween(BtnBody, {Color = ThemeConfig.ElementBackground}, 0.2, "Quad", "Out")
+                    Animator.ConstructTween(BtnOut, {Color = ThemeConfig.SectionOutline}, 0.2, "Quad", "Out")
+                end
+                
+                BtnBody.InputBegan = function(InputData)
+                    local RippleNode = VirtualDOM.CreateInstance("Circle")
+                    RippleNode.Radius = 0
+                    RippleNode.Position = Vector2.new(EngineState.MousePosition.X - BtnBody.AbsolutePosition.X, EngineState.MousePosition.Y - BtnBody.AbsolutePosition.Y)
+                    RippleNode.Color = ThemeConfig.AccentPrimary
+                    RippleNode.Filled = true
+                    RippleNode.Transparency = 0.4
+                    RippleNode.ZIndex = 107
+                    BtnBody:AddChild(RippleNode)
+                    
+                    Animator.ConstructTween(RippleNode, {Radius = BtnWidth, Transparency = 1}, 0.4, "Quint", "Out", function() RippleNode:Destroy() end)
+                    
+                    Animator.ConstructTween(BtnLabel, {Color = ThemeConfig.AccentSecondary}, 0.1, "Quad", "Out", function()
+                        Animator.ConstructTween(BtnLabel, {Color = ThemeConfig.TextPrimary}, 0.2, "Quad", "Out")
+                    end)
+                    
+                    if BtnConfig.Callback ~= nil then task.spawn(BtnConfig.Callback) end
+                end
+                
+                RefreshLayoutsFunction()
+            end
+            
+            -- ==============================================================================
+            -- SUB-COMPONENT: PARAGRAPH / LABEL
+            -- ==============================================================================
+            function SectionAPI:AddParagraph(LabelConfigTable)
+                local LabelConfig = LabelConfigTable or {}
+                local TitleString = LabelConfig.Title or "Information"
+                local ContentString = LabelConfig.Content or "Description text goes here."
+                
+                local _, NewlineCount = string.gsub(ContentString, "\n", "")
+                local ContentHeight = 15 + (NewlineCount * 14)
+                
+                local ElementCanvas = VirtualDOM.CreateInstance("Square")
+                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, 22 + ContentHeight)
+                ElementCanvas.Transparency = 0
+                ItemContainer:AddChild(ElementCanvas)
+                
+                local TitleLabel = VirtualDOM.CreateInstance("Text")
+                TitleLabel.Text = TitleString
+                TitleLabel.Size = 13
+                TitleLabel.Position = Vector2.new(12, 4)
+                TitleLabel.Color = ThemeConfig.TextPrimary
+                TitleLabel.ZIndex = 106
+                ElementCanvas:AddChild(TitleLabel)
+                
+                local CurrentYOffset = 20
+                for LineData in string.gmatch(ContentString .. "\n", "(.-)\n") do
+                    local LineLabel = VirtualDOM.CreateInstance("Text")
+                    LineLabel.Text = LineData
+                    LineLabel.Size = 13
+                    LineLabel.Position = Vector2.new(12, CurrentYOffset)
+                    LineLabel.Color = ThemeConfig.TextMuted
+                    LineLabel.ZIndex = 106
+                    ElementCanvas:AddChild(LineLabel)
+                    CurrentYOffset = CurrentYOffset + 14
+                end
+                
+                RefreshLayoutsFunction()
             end
             
             return SectionAPI
         end
         return TabAPI
     end
+    
+    -- ==============================================================================
+    -- EXTERNAL WINDOWS & CONFIGURATION LOGIC
+    -- ==============================================================================
+    function WindowAPI:SaveConfiguration(ConfigFileName)
+        local ExportTable = {}
+        for FlagId, FlagAPI in pairs(CompkillerLib.ToggledFlags) do
+            local ValueType = typeof(FlagAPI.Value)
+            if ValueType == "Color3" then
+                ExportTable[FlagId] = {R = FlagAPI.Value.R, G = FlagAPI.Value.G, B = FlagAPI.Value.B, Type = "Color3"}
+            elseif ValueType == "EnumItem" then
+                ExportTable[FlagId] = {Name = FlagAPI.Value.Name, EnumType = tostring(FlagAPI.Value.EnumType), Type = "Enum"}
+            elseif type(FlagAPI.Value) == "table" then
+                ExportTable[FlagId] = {Value = FlagAPI.Value, Type = "Table"}
+            else
+                ExportTable[FlagId] = {Value = FlagAPI.Value, Type = "Primitive"}
+            end
+        end
+        
+        local EncodedJSON = HttpService:JSONEncode(ExportTable)
+        if writefile ~= nil then
+            writefile(ConfigFileName .. ".json", EncodedJSON)
+            print("[Compkiller] Exported configuration payload to workspace: " .. ConfigFileName .. ".json")
+        else
+            warn("[Compkiller] Executor does not support writefile. JSON output:")
+            print(EncodedJSON)
+        end
+    end
+
+    function WindowAPI:LoadConfiguration(ConfigFileName)
+        if readfile ~= nil and isfile ~= nil then
+            local FullPath = ConfigFileName .. ".json"
+            if isfile(FullPath) == true then
+                local DecodedTable = HttpService:JSONDecode(readfile(FullPath))
+                for FlagId, StoredData in pairs(DecodedTable) do
+                    local TargetAPI = CompkillerLib.ToggledFlags[FlagId]
+                    if TargetAPI ~= nil then
+                        if StoredData.Type == "Color3" then
+                            TargetAPI.Value = Color3.new(StoredData.R, StoredData.G, StoredData.B)
+                        elseif StoredData.Type == "Enum" then
+                            local EnumTypeName = string.match(StoredData.EnumType, "Enum%.(.*)")
+                            if EnumTypeName and Enum[EnumTypeName] and Enum[EnumTypeName][StoredData.Name] then
+                                TargetAPI.Value = Enum[EnumTypeName][StoredData.Name]
+                            end
+                        elseif StoredData.Type == "Table" then
+                            TargetAPI.Value = StoredData.Value
+                        elseif StoredData.Type == "Primitive" then
+                            TargetAPI.Value = StoredData.Value
+                        end
+                    end
+                end
+                print("[Compkiller] Loaded configuration state from " .. FullPath)
+            else
+                warn("[Compkiller] Configuration file does not exist: " .. FullPath)
+            end
+        else
+            warn("[Compkiller] Executor missing readfile/isfile capabilities.")
+        end
+    end
+    
+    function WindowAPI:CreateWatermark(WatermarkConfigTable)
+        local WatermarkConfig = WatermarkConfigTable or {}
+        local RefreshRate = WatermarkConfig.RefreshRate or 0.5
+        
+        local WatermarkCanvas = VirtualDOM.CreateInstance("Square")
+        WatermarkCanvas.Size = Vector2.new(280, 24)
+        WatermarkCanvas.Position = Vector2.new(40, 40)
+        WatermarkCanvas.Color = ThemeConfig.WindowBackground
+        WatermarkCanvas.ZIndex = 400
+        VisualEffects.GenerateDropShadow(WatermarkCanvas, WatermarkCanvas.Size, Vector2.new(0, 0), 15, 0.4, 10)
+        
+        local OutLine = VirtualDOM.CreateInstance("Square")
+        OutLine.Size = WatermarkCanvas.Size
+        OutLine.Color = ThemeConfig.OutlineOuter
+        OutLine.Filled = false
+        OutLine.ZIndex = 401
+        WatermarkCanvas:AddChild(OutLine)
+        
+        local InLine = VirtualDOM.CreateInstance("Square")
+        InLine.Size = WatermarkCanvas.Size - Vector2.new(2, 2)
+        InLine.Position = Vector2.new(1, 1)
+        InLine.Color = ThemeConfig.OutlineInner
+        InLine.Filled = false
+        InLine.ZIndex = 401
+        WatermarkCanvas:AddChild(InLine)
+        
+        local TopBar = VirtualDOM.CreateInstance("Square")
+        TopBar.Size = Vector2.new(WatermarkCanvas.Size.X - 2, 2)
+        TopBar.Position = Vector2.new(1, 1)
+        TopBar.Color = ThemeConfig.AccentPrimary
+        TopBar.ZIndex = 402
+        WatermarkCanvas:AddChild(TopBar)
+        
+        local InfoText = VirtualDOM.CreateInstance("Text")
+        InfoText.Text = "COMPKILLER | FPS: 0 | PING: 0ms | TIME: 00:00"
+        InfoText.Size = 13
+        InfoText.Position = Vector2.new(10, 5)
+        InfoText.Color = ThemeConfig.TextPrimary
+        InfoText.ZIndex = 403
+        WatermarkCanvas:AddChild(InfoText)
+        
+        local LastUpdate, Frames, FpsCounter = 0, 0, 0
+        RunService.RenderStepped:Connect(function(Delta)
+            Frames = Frames + 1
+            LastUpdate = LastUpdate + Delta
+            if LastUpdate >= RefreshRate then
+                FpsCounter = math.floor(Frames / LastUpdate)
+                Frames, LastUpdate = 0, 0
+                InfoText.Text = string.format("COMPKILLER | FPS: %d | PING: 0ms | TIME: %s", FpsCounter, os.date("%H:%M:%S"))
+                local NewCanvasWidth = InfoText.RenderObject.TextBounds.X + 20
+                WatermarkCanvas.Size = Vector2.new(NewCanvasWidth, 24)
+                OutLine.Size = WatermarkCanvas.Size
+                InLine.Size = WatermarkCanvas.Size - Vector2.new(2, 2)
+                TopBar.Size = Vector2.new(WatermarkCanvas.Size.X - 2, 2)
+            end
+        end)
+    end
+    
+    function WindowAPI:CreateKeybindList()
+        local KeybindCanvas = VirtualDOM.CreateInstance("Square")
+        KeybindCanvas.Size = Vector2.new(180, 24)
+        KeybindCanvas.Position = Vector2.new(40, 80)
+        KeybindCanvas.Color = ThemeConfig.WindowBackground
+        KeybindCanvas.ZIndex = 400
+        VisualEffects.GenerateDropShadow(KeybindCanvas, KeybindCanvas.Size, Vector2.new(0, 0), 15, 0.4, 10)
+        
+        local OutLine = VirtualDOM.CreateInstance("Square")
+        OutLine.Size = KeybindCanvas.Size
+        OutLine.Color = ThemeConfig.OutlineOuter
+        OutLine.Filled = false
+        OutLine.ZIndex = 401
+        KeybindCanvas:AddChild(OutLine)
+        
+        local InLine = VirtualDOM.CreateInstance("Square")
+        InLine.Size = KeybindCanvas.Size - Vector2.new(2, 2)
+        InLine.Position = Vector2.new(1, 1)
+        InLine.Color = ThemeConfig.OutlineInner
+        InLine.Filled = false
+        InLine.ZIndex = 401
+        KeybindCanvas:AddChild(InLine)
+        
+        local TopBar = VirtualDOM.CreateInstance("Square")
+        TopBar.Size = Vector2.new(KeybindCanvas.Size.X - 2, 2)
+        TopBar.Position = Vector2.new(1, 1)
+        TopBar.Color = ThemeConfig.AccentPrimary
+        TopBar.ZIndex = 402
+        KeybindCanvas:AddChild(TopBar)
+        
+        local TitleText = VirtualDOM.CreateInstance("Text")
+        TitleText.Text = "Keybinds"
+        TitleText.Size = 13
+        TitleText.Position = Vector2.new(KeybindCanvas.Size.X / 2, 5)
+        TitleText.Color = ThemeConfig.AccentSecondary
+        TitleText.Center = true
+        TitleText.ZIndex = 403
+        KeybindCanvas:AddChild(TitleText)
+        
+        local ItemContainer = VirtualDOM.CreateInstance("Square")
+        ItemContainer.Size = Vector2.new(KeybindCanvas.Size.X, 0)
+        ItemContainer.Position = Vector2.new(0, 24)
+        ItemContainer.Transparency = 0
+        ItemContainer.ZIndex = 401
+        KeybindCanvas:AddChild(ItemContainer)
+        
+        local ActiveBinds = {}
+        local function RefreshKeybindLayout()
+            local CurrentY = 0
+            for _, Element in ipairs(ItemContainer.Children) do Element:Destroy() end
+            
+            for BindName, BindState in pairs(ActiveBinds) do
+                if BindState == true then
+                    local BindLabel = VirtualDOM.CreateInstance("Text")
+                    BindLabel.Text = BindName
+                    BindLabel.Size = 13
+                    BindLabel.Position = Vector2.new(10, CurrentY + 4)
+                    BindLabel.Color = ThemeConfig.TextPrimary
+                    BindLabel.ZIndex = 402
+                    ItemContainer:AddChild(BindLabel)
+                    
+                    local StateLabel = VirtualDOM.CreateInstance("Text")
+                    StateLabel.Text = "[ON]"
+                    StateLabel.Size = 13
+                    StateLabel.Position = Vector2.new(KeybindCanvas.Size.X - 35, CurrentY + 4)
+                    StateLabel.Color = ThemeConfig.AccentPrimary
+                    StateLabel.ZIndex = 402
+                    ItemContainer:AddChild(StateLabel)
+                    CurrentY = CurrentY + 20
+                end
+            end
+            
+            local TargetCanvasHeight = CurrentY == 0 and 24 or 24 + CurrentY
+            KeybindCanvas.Size = Vector2.new(KeybindCanvas.Size.X, TargetCanvasHeight)
+            OutLine.Size = KeybindCanvas.Size
+            InLine.Size = KeybindCanvas.Size - Vector2.new(2, 2)
+            ItemContainer.Size = Vector2.new(KeybindCanvas.Size.X, CurrentY)
+        end
+        
+        RunService.RenderStepped:Connect(function()
+            local HasChanges = false
+            for FlagId, API in pairs(CompkillerLib.ToggledFlags) do
+                if API.Value ~= nil and typeof(API.Value) == "EnumItem" then
+                    local IsKeyDown = false
+                    if API.Value.EnumType == Enum.KeyCode then IsKeyDown = UserInputService:IsKeyDown(API.Value)
+                    elseif API.Value.EnumType == Enum.UserInputType then
+                        local MouseStates = { [Enum.UserInputType.MouseButton1] = EngineState.IsMouseDown, [Enum.UserInputType.MouseButton2] = EngineState.IsRightMouseDown }
+                        IsKeyDown = MouseStates[API.Value] or false
+                    end
+                    if ActiveBinds[FlagId] ~= IsKeyDown then
+                        ActiveBinds[FlagId] = IsKeyDown
+                        HasChanges = true
+                    end
+                end
+            end
+            if HasChanges == true then RefreshKeybindLayout() end
+        end)
+    end
+    
     return WindowAPI
 end
 
