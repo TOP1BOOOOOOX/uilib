@@ -1,6 +1,11 @@
 --[[
     		Compkiller Interface
 
+    Author: 4lpaca
+    License: MIT
+    Github: https://github.com/4lpaca-pin/CompKiller
+    Original: compkiller.net
+
         Version: 2.6
     - Improved Performance Mode
     	Compkiller:OptimizeMode(< boolean >)
@@ -354,14 +359,12 @@ local Compkiller = {
 	Version = '2.6',
 	Logo = "rbxassetid://120245531583106",
 	Windows = {},
-	Scale = {
-Compkiller.Scale = {
-    Window = UDim2.new(0, 750, 0, 565),
+     Compkiller.Scale = {
+    Window = UDim2.new(0, 700, 0, 565),
     Mobile = UDim2.new(0, 600, 0, 375),
     TabOpen = 185,
-    TabClose = 185,
+    TabClose = 85,
 },
-	},
 	PerformanceMode = false,
 	WindowsNil = {},
 	NilFolder = Instance.new('Folder'),
@@ -370,18 +373,18 @@ Compkiller.Scale = {
 };
 
 Compkiller.Colors = {
-    Highlight = Color3.fromRGB(30, 120, 255),
-    Toggle = Color3.fromRGB(25, 100, 220),
-    Risky = Color3.fromRGB(251, 255, 39),
-    BGDBColor = Color3.fromRGB(13, 16, 25),
-    BlockColor = Color3.fromRGB(18, 22, 35),
-    StrokeColor = Color3.fromRGB(30, 35, 55),
-    SwitchColor = Color3.fromRGB(255, 255, 255),
-    DropColor = Color3.fromRGB(22, 27, 42),
-    MouseEnter = Color3.fromRGB(35, 45, 70),
-    BlockBackground = Color3.fromRGB(22, 27, 42),
-    LineColor = Color3.fromRGB(40, 50, 75),
-    HighStrokeColor = Color3.fromRGB(35, 42, 65),
+	Highlight = Color3.fromRGB(17, 238, 253),
+	Toggle = Color3.fromRGB(14, 203, 213),
+	Risky = Color3.fromRGB(251, 255, 39),
+	BGDBColor = Color3.fromRGB(22, 24, 29),
+	BlockColor = Color3.fromRGB(28, 29, 34),
+	StrokeColor = Color3.fromRGB(37, 38, 43),
+	SwitchColor = Color3.fromRGB(255, 255, 255),
+	DropColor = Color3.fromRGB(33, 35, 39),
+	MouseEnter = Color3.fromRGB(55, 58, 65),
+	BlockBackground = Color3.fromRGB(39, 40, 47),
+	LineColor = Color3.fromRGB(65, 65, 65),
+	HighStrokeColor = Color3.fromRGB(55, 56, 63),
 };
 
 Compkiller.Elements = {
@@ -6324,7 +6327,7 @@ function Compkiller.new(Config : Window)
 		Tabs = {},
 		LastTab = nil,
 		IsOpen = true,
-		AlwayShowTab = true,
+		AlwayShowTab = false,
 		THREADS = {},
 		PerformanceMode = false,
 		Notify = Compkiller.newNotify()
@@ -6423,7 +6426,7 @@ function Compkiller.new(Config : Window)
 	TabFrame.BorderSizePixel = 0
 	TabFrame.ClipsDescendants = true
 	TabFrame.Position = UDim2.new(0, 25, 0, 0)
-	TabFrame.Size = UDim2.new(0, 185, 1, 0)
+	TabFrame.Size = UDim2.new(0, 85, 1, 0)
 
 	UICorner_2.Parent = TabFrame
 
