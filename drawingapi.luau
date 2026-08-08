@@ -1,646 +1,1383 @@
 --[[
-    ===========================================================================
-    COMPKILLER // ADVANCED DRAWING API RENDERING ENGINE (FULL KERNEL)
-    VERSION: 4.0.0 (RAW VIRTUAL DOM IMPLEMENTATION)
+    =======================================================================================================================
+    COMPKILLER // ADVANCED DRAWING API RENDERING ENGINE (EXTENDED VIRTUAL DOM)
     ARCHITECTURE: LUAU
-    ===========================================================================
+    =======================================================================================================================
 --]]
 
-local CoreGui               = game:GetService("CoreGui")
-local HttpService           = game:GetService("HttpService")
-local UserInputService      = game:GetService("UserInputService")
-local RunService            = game:GetService("RunService")
-local TweenService          = game:GetService("TweenService")
-local Workspace             = game:GetService("Workspace")
-local Players               = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 
-local LocalPlayer           = Players.LocalPlayer
-local CurrentCamera         = Workspace.CurrentCamera
-local Mouse                 = LocalPlayer:GetMouse()
+local LocalPlayer = Players.LocalPlayer
+local CurrentCamera = Workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
 
 local EngineState = {
-    Initialized             = false,
-    RenderQueue             = {},
-    TweenQueue              = {},
-    HoveredElements         = {},
-    ActiveInputTarget       = nil,
-    MousePosition           = Vector2.new(0, 0),
-    PreviousMousePosition   = Vector2.new(0, 0),
-    MouseDelta              = Vector2.new(0, 0),
-    IsMouseDown             = false,
-    IsRightMouseDown        = false,
-    TimeElapsed             = 0,
-    DeltaTime               = 0,
-    Resolution              = CurrentCamera.ViewportSize,
-    InputBeganConnection    = nil,
-    InputEndedConnection    = nil,
-    RenderConnection        = nil,
-    TypingActive            = false,
-    TypingElement           = nil
+    Initialized = false,
+    RenderQueue = {},
+    TweenQueue = {},
+    HoveredElements = {},
+    ActiveInputTarget = nil,
+    MousePosition = Vector2.new(0, 0),
+    PreviousMousePosition = Vector2.new(0, 0),
+    MouseDelta = Vector2.new(0, 0),
+    IsMouseDown = false,
+    IsRightMouseDown = false,
+    TimeElapsed = 0,
+    DeltaTime = 0,
+    Resolution = CurrentCamera.ViewportSize,
+    InputBeganConnection = nil,
+    InputEndedConnection = nil,
+    RenderConnection = nil,
+    TypingActive = false,
+    TypingElement = nil
 }
 
 local ThemeManager = {
     CurrentTheme = "Dark",
-    Presets = {
-        Dark = {
-            WindowBackground          = Color3.fromRGB(15, 15, 20),
-            SidebarBackground         = Color3.fromRGB(12, 12, 17),
-            SectionBackground         = Color3.fromRGB(20, 21, 26),
-            ElementBackground         = Color3.fromRGB(25, 26, 31),
-            ElementHover              = Color3.fromRGB(32, 33, 38),
-            ElementActive             = Color3.fromRGB(40, 41, 48),
-            OutlineOuter              = Color3.fromRGB(35, 36, 42),
-            OutlineInner              = Color3.fromRGB(28, 29, 34),
-            SectionOutline            = Color3.fromRGB(35, 36, 42),
-            SeparatorLine             = Color3.fromRGB(45, 45, 55),
-            AccentPrimary             = Color3.fromRGB(13, 185, 195),
-            AccentSecondary           = Color3.fromRGB(17, 238, 253),
-            AccentHover               = Color3.fromRGB(20, 255, 255),
-            AccentDark                = Color3.fromRGB(9, 130, 140),
-            TextPrimary               = Color3.fromRGB(255, 255, 255),
-            TextSecondary             = Color3.fromRGB(180, 180, 190),
-            TextMuted                 = Color3.fromRGB(120, 120, 130),
-            TextDisabled              = Color3.fromRGB(80, 80, 90),
-            Success                   = Color3.fromRGB(46, 204, 113),
-            Warning                   = Color3.fromRGB(241, 196, 15),
-            Danger                    = Color3.fromRGB(231, 76, 60),
-            Info                      = Color3.fromRGB(52, 152, 219),
-            ShadowColor               = Color3.fromRGB(0, 0, 0),
-            ShadowOpacity             = 0.6
-        }
-    }
+    Presets = {}
+}
+
+ThemeManager.Presets["Dark"] = {
+    WindowBackground = Color3.fromRGB(15, 15, 20),
+    SidebarBackground = Color3.fromRGB(12, 12, 17),
+    SectionBackground = Color3.fromRGB(20, 21, 26),
+    ElementBackground = Color3.fromRGB(25, 26, 31),
+    ElementHover = Color3.fromRGB(32, 33, 38),
+    ElementActive = Color3.fromRGB(40, 41, 48),
+    OutlineOuter = Color3.fromRGB(35, 36, 42),
+    OutlineInner = Color3.fromRGB(28, 29, 34),
+    SectionOutline = Color3.fromRGB(35, 36, 42),
+    SeparatorLine = Color3.fromRGB(45, 45, 55),
+    AccentPrimary = Color3.fromRGB(13, 185, 195),
+    AccentSecondary = Color3.fromRGB(17, 238, 253),
+    AccentHover = Color3.fromRGB(20, 255, 255),
+    AccentDark = Color3.fromRGB(9, 130, 140),
+    TextPrimary = Color3.fromRGB(255, 255, 255),
+    TextSecondary = Color3.fromRGB(180, 180, 190),
+    TextMuted = Color3.fromRGB(120, 120, 130),
+    TextDisabled = Color3.fromRGB(80, 80, 90),
+    Success = Color3.fromRGB(46, 204, 113),
+    Warning = Color3.fromRGB(241, 196, 15),
+    Danger = Color3.fromRGB(231, 76, 60),
+    Info = Color3.fromRGB(52, 152, 219),
+    ShadowColor = Color3.fromRGB(0, 0, 0),
+    ShadowOpacity = 0.6
+}
+
+ThemeManager.Presets["Light"] = {
+    WindowBackground = Color3.fromRGB(240, 240, 245),
+    SidebarBackground = Color3.fromRGB(230, 230, 235),
+    SectionBackground = Color3.fromRGB(245, 245, 250),
+    ElementBackground = Color3.fromRGB(250, 250, 255),
+    ElementHover = Color3.fromRGB(235, 235, 240),
+    ElementActive = Color3.fromRGB(220, 220, 225),
+    OutlineOuter = Color3.fromRGB(200, 200, 205),
+    OutlineInner = Color3.fromRGB(210, 210, 215),
+    SectionOutline = Color3.fromRGB(200, 200, 205),
+    SeparatorLine = Color3.fromRGB(190, 190, 195),
+    AccentPrimary = Color3.fromRGB(13, 185, 195),
+    AccentSecondary = Color3.fromRGB(17, 238, 253),
+    AccentHover = Color3.fromRGB(20, 255, 255),
+    AccentDark = Color3.fromRGB(9, 130, 140),
+    TextPrimary = Color3.fromRGB(20, 20, 25),
+    TextSecondary = Color3.fromRGB(60, 60, 65),
+    TextMuted = Color3.fromRGB(100, 100, 105),
+    TextDisabled = Color3.fromRGB(140, 140, 145),
+    Success = Color3.fromRGB(46, 204, 113),
+    Warning = Color3.fromRGB(241, 196, 15),
+    Danger = Color3.fromRGB(231, 76, 60),
+    Info = Color3.fromRGB(52, 152, 219),
+    ShadowColor = Color3.fromRGB(0, 0, 0),
+    ShadowOpacity = 0.3
+}
+
+ThemeManager.Presets["Midnight"] = {
+    WindowBackground = Color3.fromRGB(5, 5, 8),
+    SidebarBackground = Color3.fromRGB(8, 8, 12),
+    SectionBackground = Color3.fromRGB(10, 10, 15),
+    ElementBackground = Color3.fromRGB(15, 15, 20),
+    ElementHover = Color3.fromRGB(20, 20, 25),
+    ElementActive = Color3.fromRGB(25, 25, 30),
+    OutlineOuter = Color3.fromRGB(20, 20, 25),
+    OutlineInner = Color3.fromRGB(15, 15, 20),
+    SectionOutline = Color3.fromRGB(25, 25, 30),
+    SeparatorLine = Color3.fromRGB(30, 30, 35),
+    AccentPrimary = Color3.fromRGB(147, 112, 219),
+    AccentSecondary = Color3.fromRGB(138, 43, 226),
+    AccentHover = Color3.fromRGB(186, 85, 211),
+    AccentDark = Color3.fromRGB(75, 0, 130),
+    TextPrimary = Color3.fromRGB(255, 255, 255),
+    TextSecondary = Color3.fromRGB(200, 200, 200),
+    TextMuted = Color3.fromRGB(150, 150, 150),
+    TextDisabled = Color3.fromRGB(100, 100, 100),
+    Success = Color3.fromRGB(0, 255, 127),
+    Warning = Color3.fromRGB(255, 215, 0),
+    Danger = Color3.fromRGB(220, 20, 60),
+    Info = Color3.fromRGB(30, 144, 255),
+    ShadowColor = Color3.fromRGB(0, 0, 0),
+    ShadowOpacity = 0.8
 }
 
 local MathLib = {}
-function MathLib.Lerp(Start, End, Alpha) return Start + (End - Start) * Alpha end
-function MathLib.Clamp(Value, Min, Max) return math.max(Min, math.min(Max, Value)) end
+
+function MathLib.Lerp(Start, End, Alpha)
+    local Difference = End - Start
+    local Progress = Difference * Alpha
+    local Result = Start + Progress
+    return Result
+end
+
+function MathLib.Clamp(Value, Min, Max)
+    if Value < Min then
+        return Min
+    end
+    if Value > Max then
+        return Max
+    end
+    return Value
+end
+
 function MathLib.Round(Value, DecimalPlaces)
-    local Multiplier = 10 ^ (DecimalPlaces or 0)
-    return math.floor(Value * Multiplier + 0.5) / Multiplier
+    local Power = DecimalPlaces or 0
+    local Multiplier = math.pow(10, Power)
+    local ShiftedValue = Value * Multiplier
+    local RoundedValue = math.floor(ShiftedValue + 0.5)
+    local FinalValue = RoundedValue / Multiplier
+    return FinalValue
 end
+
 function MathLib.LerpVector2(StartVec, EndVec, Alpha)
-    return Vector2.new(MathLib.Lerp(StartVec.X, EndVec.X, Alpha), MathLib.Lerp(StartVec.Y, EndVec.Y, Alpha))
+    local XStart = StartVec.X
+    local YStart = StartVec.Y
+    local XEnd = EndVec.X
+    local YEnd = EndVec.Y
+    local XLerp = MathLib.Lerp(XStart, XEnd, Alpha)
+    local YLerp = MathLib.Lerp(YStart, YEnd, Alpha)
+    local Result = Vector2.new(XLerp, YLerp)
+    return Result
 end
+
 function MathLib.LerpColor3(StartCol, EndCol, Alpha)
-    return Color3.new(MathLib.Lerp(StartCol.R, EndCol.R, Alpha), MathLib.Lerp(StartCol.G, EndCol.G, Alpha), MathLib.Lerp(StartCol.B, EndCol.B, Alpha))
+    local RStart = StartCol.R
+    local GStart = StartCol.G
+    local BStart = StartCol.B
+    local REnd = EndCol.R
+    local GEnd = EndCol.G
+    local BEnd = EndCol.B
+    local RLerp = MathLib.Lerp(RStart, REnd, Alpha)
+    local GLerp = MathLib.Lerp(GStart, GEnd, Alpha)
+    local BLerp = MathLib.Lerp(BStart, BEnd, Alpha)
+    local Result = Color3.new(RLerp, GLerp, BLerp)
+    return Result
 end
+
 function MathLib.PointInRectangle(Point, RectPosition, RectSize)
-    return Point.X >= RectPosition.X and Point.X <= RectPosition.X + RectSize.X and Point.Y >= RectPosition.Y and Point.Y <= RectPosition.Y + RectSize.Y
-end
-function MathLib.HSVToRGB(h, s, v)
-    local r, g, b
-    local i = math.floor(h * 6)
-    local f = h * 6 - i
-    local p = v * (1 - s)
-    local q = v * (1 - f * s)
-    local t = v * (1 - (1 - f) * s)
-    i = i % 6
-    if i == 0 then r, g, b = v, t, p
-    elseif i == 1 then r, g, b = q, v, p
-    elseif i == 2 then r, g, b = p, v, t
-    elseif i == 3 then r, g, b = p, q, v
-    elseif i == 4 then r, g, b = t, p, v
-    elseif i == 5 then r, g, b = v, p, q
-    end
-    return Color3.new(r, g, b)
-end
-function MathLib.RGBToHSV(c)
-    local r, g, b = c.R, c.G, c.B
-    local max, min = math.max(r, g, b), math.min(r, g, b)
-    local h, s, v
-    v = max
-    local d = max - min
-    if max == 0 then s = 0 else s = d / max end
-    if max == min then
-        h = 0
-    else
-        if max == r then
-            h = (g - b) / d
-            if g < b then h = h + 6 end
-        elseif max == g then h = (b - r) / d + 2
-        elseif max == b then h = (r - g) / d + 4
+    local PointX = Point.X
+    local PointY = Point.Y
+    local RectX = RectPosition.X
+    local RectY = RectPosition.Y
+    local RectWidth = RectSize.X
+    local RectHeight = RectSize.Y
+    local MaxX = RectX + RectWidth
+    local MaxY = RectY + RectHeight
+    
+    local XValid = false
+    local YValid = false
+    
+    if PointX >= RectX then
+        if PointX <= MaxX then
+            XValid = true
         end
-        h = h / 6
     end
-    return h, s, v
+    
+    if PointY >= RectY then
+        if PointY <= MaxY then
+            YValid = true
+        end
+    end
+    
+    if XValid == true then
+        if YValid == true then
+            return true
+        end
+    end
+    
+    return false
+end
+
+function MathLib.HSVToRGB(Hue, Saturation, Value)
+    local R = 0
+    local G = 0
+    local B = 0
+    local I = math.floor(Hue * 6)
+    local F = Hue * 6 - I
+    local P = Value * (1 - Saturation)
+    local Q = Value * (1 - F * Saturation)
+    local T = Value * (1 - (1 - F) * Saturation)
+    I = I % 6
+    if I == 0 then
+        R = Value
+        G = T
+        B = P
+    elseif I == 1 then
+        R = Q
+        G = Value
+        B = P
+    elseif I == 2 then
+        R = P
+        G = Value
+        B = T
+    elseif I == 3 then
+        R = P
+        G = Q
+        B = Value
+    elseif I == 4 then
+        R = T
+        G = P
+        B = Value
+    elseif I == 5 then
+        R = Value
+        G = P
+        B = Q
+    end
+    local Result = Color3.new(R, G, B)
+    return Result
+end
+
+function MathLib.RGBToHSV(Color)
+    local R = Color.R
+    local G = Color.G
+    local B = Color.B
+    local MaxValue = math.max(R, G, B)
+    local MinValue = math.min(R, G, B)
+    local Hue = 0
+    local Saturation = 0
+    local Value = MaxValue
+    local Difference = MaxValue - MinValue
+    
+    if MaxValue == 0 then
+        Saturation = 0
+    else
+        Saturation = Difference / MaxValue
+    end
+    
+    if MaxValue == MinValue then
+        Hue = 0
+    else
+        if MaxValue == R then
+            Hue = (G - B) / Difference
+            if G < B then
+                Hue = Hue + 6
+            end
+        elseif MaxValue == G then
+            Hue = (B - R) / Difference + 2
+        elseif MaxValue == B then
+            Hue = (R - G) / Difference + 4
+        end
+        Hue = Hue / 6
+    end
+    
+    return Hue, Saturation, Value
 end
 
 local EasingLib = {}
-function EasingLib.Linear(t, b, c, d) return c * t / d + b end
-function EasingLib.OutQuad(t, b, c, d) t = t / d; return -c * t * (t - 2) + b end
-function EasingLib.OutQuint(t, b, c, d) t = t / d - 1; return c * (math.pow(t, 5) + 1) + b end
-function EasingLib.OutExpo(t, b, c, d) if t == d then return b + c else return c * 1.001 * (-math.pow(2, -10 * t / d) + 1) + b end end
 
-local Animator = {}
-function Animator.ConstructTween(Object, Properties, Duration, EasingStyle, EasingDirection, Callback)
-    EasingStyle = EasingStyle or "Quad"
-    EasingDirection = EasingDirection or "Out"
-    local EasingFunctionName = EasingDirection .. EasingStyle
-    local EasingFunction = EasingLib[EasingFunctionName] or EasingLib.OutQuad
-    
-    local StartProperties, ChangeProperties = {}, {}
-    for Property, EndValue in pairs(Properties) do
-        StartProperties[Property] = Object[Property]
-        ChangeProperties[Property] = EndValue
-    end
-    
-    local TweenData = { Object = Object, Start = StartProperties, Target = ChangeProperties, Duration = Duration, TimeElapsed = 0, Easing = EasingFunction, OnComplete = Callback, IsCompleted = false }
-    table.insert(EngineState.TweenQueue, TweenData)
-    return TweenData
+function EasingLib.Linear(Time, Begin, Change, Duration)
+    local Progress = Time / Duration
+    local Value = Change * Progress
+    local Result = Value + Begin
+    return Result
 end
 
-function Animator.CancelTween(Object)
-    for i = #EngineState.TweenQueue, 1, -1 do
-        if EngineState.TweenQueue[i].Object == Object then table.remove(EngineState.TweenQueue, i) end
+function EasingLib.InQuad(Time, Begin, Change, Duration)
+    local Progress = Time / Duration
+    local Value = Progress * Progress
+    local Result = Change * Value + Begin
+    return Result
+end
+
+function EasingLib.OutQuad(Time, Begin, Change, Duration)
+    local Progress = Time / Duration
+    local Value = Progress * (Progress - 2)
+    local Result = -Change * Value + Begin
+    return Result
+end
+
+function EasingLib.InOutQuad(Time, Begin, Change, Duration)
+    local Progress = Time / (Duration / 2)
+    if Progress < 1 then
+        local Value = Change / 2 * Progress * Progress
+        local Result = Value + Begin
+        return Result
+    end
+    Progress = Progress - 1
+    local Value = -Change / 2 * (Progress * (Progress - 2) - 1)
+    local Result = Value + Begin
+    return Result
+end
+
+function EasingLib.InCubic(Time, Begin, Change, Duration)
+    local Progress = Time / Duration
+    local Value = Progress * Progress * Progress
+    local Result = Change * Value + Begin
+    return Result
+end
+
+function EasingLib.OutCubic(Time, Begin, Change, Duration)
+    local Progress = Time / Duration - 1
+    local Value = Progress * Progress * Progress + 1
+    local Result = Change * Value + Begin
+    return Result
+end
+
+function EasingLib.InOutCubic(Time, Begin, Change, Duration)
+    local Progress = Time / (Duration / 2)
+    if Progress < 1 then
+        local Value = Change / 2 * Progress * Progress * Progress
+        local Result = Value + Begin
+        return Result
+    end
+    Progress = Progress - 2
+    local Value = Change / 2 * (Progress * Progress * Progress + 2)
+    local Result = Value + Begin
+    return Result
+end
+
+function EasingLib.InQuart(Time, Begin, Change, Duration)
+    local Progress = Time / Duration
+    local Value = Progress * Progress * Progress * Progress
+    local Result = Change * Value + Begin
+    return Result
+end
+
+function EasingLib.OutQuart(Time, Begin, Change, Duration)
+    local Progress = Time / Duration - 1
+    local Value = Progress * Progress * Progress * Progress - 1
+    local Result = -Change * Value + Begin
+    return Result
+end
+
+function EasingLib.InOutQuart(Time, Begin, Change, Duration)
+    local Progress = Time / (Duration / 2)
+    if Progress < 1 then
+        local Value = Change / 2 * Progress * Progress * Progress * Progress
+        local Result = Value + Begin
+        return Result
+    end
+    Progress = Progress - 2
+    local Value = -Change / 2 * (Progress * Progress * Progress * Progress - 2)
+    local Result = Value + Begin
+    return Result
+end
+
+function EasingLib.InQuint(Time, Begin, Change, Duration)
+    local Progress = Time / Duration
+    local Value = math.pow(Progress, 5)
+    local Result = Change * Value + Begin
+    return Result
+end
+
+function EasingLib.OutQuint(Time, Begin, Change, Duration)
+    local Progress = Time / Duration - 1
+    local Value = math.pow(Progress, 5) + 1
+    local Result = Change * Value + Begin
+    return Result
+end
+
+function EasingLib.InOutQuint(Time, Begin, Change, Duration)
+    local Progress = Time / (Duration / 2)
+    if Progress < 1 then
+        local Value = Change / 2 * math.pow(Progress, 5)
+        local Result = Value + Begin
+        return Result
+    end
+    Progress = Progress - 2
+    local Value = Change / 2 * (math.pow(Progress, 5) + 2)
+    local Result = Value + Begin
+    return Result
+end
+
+function EasingLib.InSine(Time, Begin, Change, Duration)
+    local Progress = Time / Duration
+    local Value = math.cos(Progress * (math.pi / 2))
+    local Result = -Change * Value + Change + Begin
+    return Result
+end
+
+function EasingLib.OutSine(Time, Begin, Change, Duration)
+    local Progress = Time / Duration
+    local Value = math.sin(Progress * (math.pi / 2))
+    local Result = Change * Value + Begin
+    return Result
+end
+
+function EasingLib.InOutSine(Time, Begin, Change, Duration)
+    local Progress = Time / Duration
+    local Value = math.cos(math.pi * Progress) - 1
+    local Result = -Change / 2 * Value + Begin
+    return Result
+end
+
+function EasingLib.InExpo(Time, Begin, Change, Duration)
+    if Time == 0 then
+        return Begin
+    end
+    local Progress = Time / Duration - 1
+    local Value = math.pow(2, 10 * Progress)
+    local Result = Change * Value + Begin
+    return Result
+end
+
+function EasingLib.OutExpo(Time, Begin, Change, Duration)
+    if Time == Duration then
+        local Result = Begin + Change
+        return Result
+    end
+    local Progress = Time / Duration
+    local Value = -math.pow(2, -10 * Progress) + 1
+    local Result = Change * 1.001 * Value + Begin
+    return Result
+end
+
+function EasingLib.InOutExpo(Time, Begin, Change, Duration)
+    if Time == 0 then
+        return Begin
+    end
+    if Time == Duration then
+        local Result = Begin + Change
+        return Result
+    end
+    local Progress = Time / (Duration / 2)
+    if Progress < 1 then
+        local Value = math.pow(2, 10 * (Progress - 1))
+        local Result = Change / 2 * Value + Begin
+        return Result
+    end
+    Progress = Progress - 1
+    local Value = -math.pow(2, -10 * Progress) + 2
+    local Result = Change / 2 * 1.0005 * Value + Begin
+    return Result
+end
+
+local Animator = {}
+
+function Animator.ConstructTween(Object, Properties, Duration, EasingStyle, EasingDirection, Callback)
+    local SelectedStyle = EasingStyle or "Quad"
+    local SelectedDirection = EasingDirection or "Out"
+    local FunctionName = SelectedDirection .. SelectedStyle
+    
+    if SelectedStyle == "Linear" then
+        FunctionName = "Linear"
+    end
+    
+    local AssignedFunction = EasingLib[FunctionName]
+    if not AssignedFunction then
+        AssignedFunction = EasingLib.OutQuad
+    end
+    
+    local StartStates = {}
+    local EndStates = {}
+    
+    for PropertyName, PropertyValue in pairs(Properties) do
+        local CurrentValue = Object[PropertyName]
+        StartStates[PropertyName] = CurrentValue
+        EndStates[PropertyName] = PropertyValue
+    end
+    
+    local TweenConstructor = {
+        Object = Object,
+        Start = StartStates,
+        Target = EndStates,
+        Duration = Duration,
+        TimeElapsed = 0,
+        Easing = AssignedFunction,
+        OnComplete = Callback,
+        IsCompleted = false
+    }
+    
+    table.insert(EngineState.TweenQueue, TweenConstructor)
+    return TweenConstructor
+end
+
+function Animator.CancelTween(TargetObject)
+    local QueueSize = #EngineState.TweenQueue
+    for Index = QueueSize, 1, -1 do
+        local CurrentTween = EngineState.TweenQueue[Index]
+        local TweenTarget = CurrentTween.Object
+        if TweenTarget == TargetObject then
+            table.remove(EngineState.TweenQueue, Index)
+        end
     end
 end
 
 local VirtualDOM = {}
 VirtualDOM.__index = VirtualDOM
 
-function VirtualDOM.CreateInstance(Type)
-    local self = setmetatable({}, VirtualDOM)
-    self.Type = Type
-    self.RenderObject = Drawing.new(Type)
-    self.Children = {}
-    self.Parent = nil
-    self.Position = Vector2.new(0, 0)
-    self.Size = Vector2.new(0, 0)
-    self.AbsolutePosition = Vector2.new(0, 0)
-    self.AbsoluteSize = Vector2.new(0, 0)
-    self.Visible = true
-    self.ZIndex = 1
-    self.Transparency = 1
-    self.Color = Color3.new(1, 1, 1)
-    self.ClipsDescendants = false
-    self.ClipBounds = nil
+function VirtualDOM.CreateInstance(InstanceType)
+    local DOMObject = {}
+    setmetatable(DOMObject, VirtualDOM)
     
-    if Type == "Square" then
-        self.Filled = true
-        self.Thickness = 1
-    elseif Type == "Text" then
-        self.Text = ""
-        self.TextSize = 13
-        self.Center = false
-        self.Outline = true
-        self.OutlineColor = Color3.new(0, 0, 0)
-        self.Font = 2
-    elseif Type == "Line" then
-        self.Thickness = 1
-        self.From = Vector2.new(0, 0)
-        self.To = Vector2.new(0, 0)
-    elseif Type == "Circle" then
-        self.Radius = 0
-        self.Filled = false
-        self.NumSides = 64
-        self.Thickness = 1
+    local NativeDrawing = Drawing.new(InstanceType)
+    
+    DOMObject.Type = InstanceType
+    DOMObject.RenderObject = NativeDrawing
+    DOMObject.Children = {}
+    DOMObject.Parent = nil
+    
+    DOMObject.Position = Vector2.new(0, 0)
+    DOMObject.Size = Vector2.new(0, 0)
+    DOMObject.AbsolutePosition = Vector2.new(0, 0)
+    DOMObject.AbsoluteSize = Vector2.new(0, 0)
+    
+    DOMObject.Visible = true
+    DOMObject.ZIndex = 1
+    DOMObject.Transparency = 1
+    DOMObject.Color = Color3.new(1, 1, 1)
+    
+    DOMObject.ClipsDescendants = false
+    DOMObject.ClipBounds = nil
+    
+    DOMObject.FloatingLayer = false
+    
+    if InstanceType == "Square" then
+        DOMObject.Filled = true
+        DOMObject.Thickness = 1
     end
     
-    table.insert(EngineState.RenderQueue, self)
-    return self
+    if InstanceType == "Text" then
+        DOMObject.Text = ""
+        DOMObject.TextSize = 13
+        DOMObject.Center = false
+        DOMObject.Outline = true
+        DOMObject.OutlineColor = Color3.new(0, 0, 0)
+        DOMObject.Font = 2
+    end
+    
+    if InstanceType == "Line" then
+        DOMObject.Thickness = 1
+        DOMObject.From = Vector2.new(0, 0)
+        DOMObject.To = Vector2.new(0, 0)
+    end
+    
+    if InstanceType == "Circle" then
+        DOMObject.Radius = 0
+        DOMObject.Filled = false
+        DOMObject.NumSides = 64
+        DOMObject.Thickness = 1
+    end
+    
+    if InstanceType == "Image" then
+        DOMObject.Data = nil
+        DOMObject.Rounding = 0
+    end
+    
+    DOMObject.InputBegan = nil
+    DOMObject.InputEnded = nil
+    DOMObject.RightInputBegan = nil
+    DOMObject.MouseEnter = nil
+    DOMObject.MouseLeave = nil
+    DOMObject.MouseScroll = nil
+    
+    table.insert(EngineState.RenderQueue, DOMObject)
+    
+    return DOMObject
 end
 
-function VirtualDOM:AddChild(ChildInstance)
-    ChildInstance.Parent = self
-    table.insert(self.Children, ChildInstance)
+function VirtualDOM:AddChild(ChildNode)
+    ChildNode.Parent = self
+    table.insert(self.Children, ChildNode)
 end
 
 function VirtualDOM:Destroy()
-    for _, Child in ipairs(self.Children) do Child:Destroy() end
-    if self.Parent then
-        for i, Child in ipairs(self.Parent.Children) do
-            if Child == self then table.remove(self.Parent.Children, i); break end
+    local ChildList = self.Children
+    for Index, ChildNode in ipairs(ChildList) do
+        ChildNode:Destroy()
+    end
+    
+    local ParentNode = self.Parent
+    if ParentNode ~= nil then
+        local SiblingList = ParentNode.Children
+        for Index, SiblingNode in ipairs(SiblingList) do
+            if SiblingNode == self then
+                table.remove(ParentNode.Children, Index)
+                break
+            end
         end
     end
-    for i, Instance in ipairs(EngineState.RenderQueue) do
-        if Instance == self then table.remove(EngineState.RenderQueue, i); break end
+    
+    local RenderList = EngineState.RenderQueue
+    for Index, RenderNode in ipairs(RenderList) do
+        if RenderNode == self then
+            table.remove(EngineState.RenderQueue, Index)
+            break
+        end
     end
+    
     Animator.CancelTween(self)
-    if self.RenderObject then self.RenderObject:Remove(); self.RenderObject = nil end
+    
+    local NativeDrawing = self.RenderObject
+    if NativeDrawing ~= nil then
+        NativeDrawing:Remove()
+        self.RenderObject = nil
+    end
+    
     setmetatable(self, nil)
 end
 
 function VirtualDOM:UpdateTransformations()
-    if self.Parent then
-        self.AbsolutePosition = self.Parent.AbsolutePosition + self.Position
+    local ParentNode = self.Parent
+    if ParentNode ~= nil then
+        local ParentAbsolute = ParentNode.AbsolutePosition
+        local LocalPosition = self.Position
+        self.AbsolutePosition = ParentAbsolute + LocalPosition
     else
-        self.AbsolutePosition = self.Position
+        local LocalPosition = self.Position
+        self.AbsolutePosition = LocalPosition
     end
-    self.AbsoluteSize = self.Size
     
-    if self.Parent and self.Parent.ClipsDescendants then
-        if self.Parent.ClipBounds then
-            self.ClipBounds = self.Parent.ClipBounds
+    local LocalSize = self.Size
+    self.AbsoluteSize = LocalSize
+    
+    if ParentNode ~= nil then
+        local ParentClips = ParentNode.ClipsDescendants
+        if ParentClips == true then
+            local ParentBounds = ParentNode.ClipBounds
+            if ParentBounds ~= nil then
+                self.ClipBounds = ParentBounds
+            else
+                local MinBound = ParentNode.AbsolutePosition
+                local MaxBound = ParentNode.AbsolutePosition + ParentNode.AbsoluteSize
+                self.ClipBounds = {
+                    Min = MinBound,
+                    Max = MaxBound
+                }
+            end
         else
-            self.ClipBounds = {
-                Min = self.Parent.AbsolutePosition,
-                Max = self.Parent.AbsolutePosition + self.Parent.AbsoluteSize
-            }
+            local ParentBounds = ParentNode.ClipBounds
+            if ParentBounds ~= nil then
+                self.ClipBounds = ParentBounds
+            else
+                self.ClipBounds = nil
+            end
         end
-    elseif self.Parent and self.Parent.ClipBounds then
-        self.ClipBounds = self.Parent.ClipBounds
     else
         self.ClipBounds = nil
     end
 end
 
 function VirtualDOM:RenderToScreen()
-    if not self.RenderObject then return end
-    if not self.Visible then self.RenderObject.Visible = false return end
+    local NativeDrawing = self.RenderObject
+    if NativeDrawing == nil then
+        return
+    end
+    
+    local IsVisible = self.Visible
+    if IsVisible == false then
+        NativeDrawing.Visible = false
+        return
+    end
     
     local CurrentNode = self.Parent
-    local IsVisibleHierarchy = true
-    while CurrentNode do
-        if not CurrentNode.Visible then IsVisibleHierarchy = false break end
+    local IsHierarchyVisible = true
+    
+    while CurrentNode ~= nil do
+        local NodeVisible = CurrentNode.Visible
+        if NodeVisible == false then
+            IsHierarchyVisible = false
+            break
+        end
         CurrentNode = CurrentNode.Parent
     end
     
-    if not IsVisibleHierarchy then self.RenderObject.Visible = false return end
+    if IsHierarchyVisible == false then
+        NativeDrawing.Visible = false
+        return
+    end
+    
     self:UpdateTransformations()
     
-    local RenderPos = self.AbsolutePosition
+    local RenderPosition = self.AbsolutePosition
     local RenderSize = self.AbsoluteSize
     local IsClippedOut = false
+    local Bounds = self.ClipBounds
     
-    if self.ClipBounds and self.Type == "Square" then
-        local MinX = math.max(RenderPos.X, self.ClipBounds.Min.X)
-        local MinY = math.max(RenderPos.Y, self.ClipBounds.Min.Y)
-        local MaxX = math.min(RenderPos.X + RenderSize.X, self.ClipBounds.Max.X)
-        local MaxY = math.min(RenderPos.Y + RenderSize.Y, self.ClipBounds.Max.Y)
-        
-        if MinX >= MaxX or MinY >= MaxY then
-            IsClippedOut = true
-        else
-            RenderPos = Vector2.new(MinX, MinY)
-            RenderSize = Vector2.new(MaxX - MinX, MaxY - MinY)
-        end
-    elseif self.ClipBounds and (self.Type == "Text" or self.Type == "Circle") then
-        if RenderPos.X < self.ClipBounds.Min.X or RenderPos.X > self.ClipBounds.Max.X or 
-           RenderPos.Y < self.ClipBounds.Min.Y or RenderPos.Y > self.ClipBounds.Max.Y then
-            IsClippedOut = true
+    if Bounds ~= nil then
+        local InstanceType = self.Type
+        if InstanceType == "Square" then
+            local MinX = Bounds.Min.X
+            local MinY = Bounds.Min.Y
+            local MaxX = Bounds.Max.X
+            local MaxY = Bounds.Max.Y
+            
+            local RenderMinX = RenderPosition.X
+            local RenderMinY = RenderPosition.Y
+            local RenderMaxX = RenderPosition.X + RenderSize.X
+            local RenderMaxY = RenderPosition.Y + RenderSize.Y
+            
+            local ClampedMinX = math.max(RenderMinX, MinX)
+            local ClampedMinY = math.max(RenderMinY, MinY)
+            local ClampedMaxX = math.min(RenderMaxX, MaxX)
+            local ClampedMaxY = math.min(RenderMaxY, MaxY)
+            
+            if ClampedMinX >= ClampedMaxX then
+                IsClippedOut = true
+            end
+            
+            if ClampedMinY >= ClampedMaxY then
+                IsClippedOut = true
+            end
+            
+            if IsClippedOut == false then
+                RenderPosition = Vector2.new(ClampedMinX, ClampedMinY)
+                RenderSize = Vector2.new(ClampedMaxX - ClampedMinX, ClampedMaxY - ClampedMinY)
+            end
+            
+        elseif InstanceType == "Text" then
+            local MinX = Bounds.Min.X
+            local MinY = Bounds.Min.Y
+            local MaxX = Bounds.Max.X
+            local MaxY = Bounds.Max.Y
+            
+            local RenderX = RenderPosition.X
+            local RenderY = RenderPosition.Y
+            
+            if RenderX < MinX then
+                IsClippedOut = true
+            end
+            if RenderX > MaxX then
+                IsClippedOut = true
+            end
+            if RenderY < MinY then
+                IsClippedOut = true
+            end
+            if RenderY > MaxY then
+                IsClippedOut = true
+            end
+            
+        elseif InstanceType == "Line" then
+            IsClippedOut = false 
         end
     end
     
-    if IsClippedOut then self.RenderObject.Visible = false return end
-
-    self.RenderObject.Visible = true
-    self.RenderObject.ZIndex = self.ZIndex
-    self.RenderObject.Transparency = self.Transparency
-    self.RenderObject.Color = self.Color
+    if IsClippedOut == true then
+        NativeDrawing.Visible = false
+        return
+    end
     
-    if self.Type == "Square" then
-        self.RenderObject.Position = RenderPos
-        self.RenderObject.Size = RenderSize
-        self.RenderObject.Filled = self.Filled
-        self.RenderObject.Thickness = self.Thickness
-    elseif self.Type == "Text" then
-        self.RenderObject.Position = RenderPos
-        self.RenderObject.Text = self.Text
-        self.RenderObject.Size = self.TextSize
-        self.RenderObject.Center = self.Center
-        self.RenderObject.Outline = self.Outline
-        self.RenderObject.OutlineColor = self.OutlineColor
-        self.RenderObject.Font = self.Font
-    elseif self.Type == "Line" then
-        self.RenderObject.From = RenderPos
-        self.RenderObject.To = RenderPos + RenderSize
-        self.RenderObject.Thickness = self.Thickness
-    elseif self.Type == "Circle" then
-        self.RenderObject.Position = RenderPos
-        self.RenderObject.Radius = self.Radius
-        self.RenderObject.Filled = self.Filled
-        self.RenderObject.NumSides = self.NumSides
-        self.RenderObject.Thickness = self.Thickness
+    NativeDrawing.Visible = true
+    NativeDrawing.ZIndex = self.ZIndex
+    NativeDrawing.Transparency = self.Transparency
+    NativeDrawing.Color = self.Color
+    
+    local InstanceType = self.Type
+    if InstanceType == "Square" then
+        NativeDrawing.Position = RenderPosition
+        NativeDrawing.Size = RenderSize
+        NativeDrawing.Filled = self.Filled
+        NativeDrawing.Thickness = self.Thickness
+    elseif InstanceType == "Text" then
+        NativeDrawing.Position = RenderPosition
+        NativeDrawing.Text = self.Text
+        NativeDrawing.Size = self.TextSize
+        NativeDrawing.Center = self.Center
+        NativeDrawing.Outline = self.Outline
+        NativeDrawing.OutlineColor = self.OutlineColor
+        NativeDrawing.Font = self.Font
+    elseif InstanceType == "Line" then
+        NativeDrawing.From = RenderPosition
+        NativeDrawing.To = RenderPosition + RenderSize
+        NativeDrawing.Thickness = self.Thickness
+    elseif InstanceType == "Circle" then
+        NativeDrawing.Position = RenderPosition
+        NativeDrawing.Radius = self.Radius
+        NativeDrawing.Filled = self.Filled
+        NativeDrawing.NumSides = self.NumSides
+        NativeDrawing.Thickness = self.Thickness
+    elseif InstanceType == "Image" then
+        NativeDrawing.Position = RenderPosition
+        NativeDrawing.Size = RenderSize
+        if self.Data ~= nil then
+            NativeDrawing.Data = self.Data
+        end
     end
 end
 
 local VisualEffects = {}
+
 function VisualEffects.GenerateDropShadow(ParentNode, Size, PositionOffset, Spread, Opacity, Quality)
     local ShadowGroup = {}
-    local StepSize = Spread / Quality
-    for i = 1, Quality do
-        local Expansion = i * StepSize
-        local CurrentOpacity = Opacity - (i * (Opacity / Quality))
+    local QualitySteps = Quality
+    local TotalSpread = Spread
+    local StepSize = TotalSpread / QualitySteps
+    local BaseOpacity = Opacity
+    
+    for Index = 1, QualitySteps do
+        local Expansion = Index * StepSize
+        local OpacityReduction = Index * (BaseOpacity / QualitySteps)
+        local CurrentOpacity = BaseOpacity - OpacityReduction
+        
         local ShadowLayer = VirtualDOM.CreateInstance("Square")
-        ShadowLayer.Size = Size + Vector2.new(Expansion * 2, Expansion * 2)
-        ShadowLayer.Position = PositionOffset - Vector2.new(Expansion, Expansion)
-        ShadowLayer.Color = ThemeManager.Presets[ThemeManager.CurrentTheme].ShadowColor
+        local BaseSize = Size
+        local AddedSize = Vector2.new(Expansion * 2, Expansion * 2)
+        local FinalSize = BaseSize + AddedSize
+        
+        local BasePosition = PositionOffset
+        local SubtractedPosition = Vector2.new(Expansion, Expansion)
+        local FinalPosition = BasePosition - SubtractedPosition
+        
+        local ActiveTheme = ThemeManager.CurrentTheme
+        local ThemeColors = ThemeManager.Presets[ActiveTheme]
+        local ShadowColor = ThemeColors.ShadowColor
+        
+        local ParentZIndex = ParentNode.ZIndex
+        local TargetZIndex = ParentZIndex - Index
+        
+        ShadowLayer.Size = FinalSize
+        ShadowLayer.Position = FinalPosition
+        ShadowLayer.Color = ShadowColor
         ShadowLayer.Filled = false
         ShadowLayer.Thickness = 1
         ShadowLayer.Transparency = CurrentOpacity
-        ShadowLayer.ZIndex = ParentNode.ZIndex - i
+        ShadowLayer.ZIndex = TargetZIndex
+        
         ParentNode:AddChild(ShadowLayer)
         table.insert(ShadowGroup, ShadowLayer)
     end
+    
     return ShadowGroup
 end
 
-EngineState.RenderConnection = RunService.RenderStepped:Connect(function(DeltaTime)
-    EngineState.TimeElapsed = EngineState.TimeElapsed + DeltaTime
-    EngineState.DeltaTime = DeltaTime
+function VisualEffects.GenerateGradient(ParentNode, Size, StartColor, EndColor, Resolution, IsVertical)
+    local GradientGroup = {}
+    local TotalSteps = Resolution
     
-    local CurrentMouseLocation = UserInputService:GetMouseLocation()
-    EngineState.MouseDelta = CurrentMouseLocation - EngineState.PreviousMousePosition
-    EngineState.PreviousMousePosition = CurrentMouseLocation
-    EngineState.MousePosition = CurrentMouseLocation
-    
-    for i = #EngineState.TweenQueue, 1, -1 do
-        local Tween = EngineState.TweenQueue[i]
-        Tween.TimeElapsed = Tween.TimeElapsed + DeltaTime
-        if Tween.TimeElapsed >= Tween.Duration then
-            Tween.TimeElapsed = Tween.Duration
-            Tween.IsCompleted = true
+    if IsVertical == true then
+        local TotalHeight = Size.Y
+        local StepHeight = TotalHeight / TotalSteps
+        
+        for Index = 0, TotalSteps - 1 do
+            local Alpha = Index / (TotalSteps - 1)
+            local CurrentColor = MathLib.LerpColor3(StartColor, EndColor, Alpha)
+            
+            local GradientLine = VirtualDOM.CreateInstance("Square")
+            local LineWidth = Size.X
+            local LineHeight = StepHeight + 1
+            local LineSize = Vector2.new(LineWidth, LineHeight)
+            
+            local LineX = 0
+            local LineY = Index * StepHeight
+            local LinePosition = Vector2.new(LineX, LineY)
+            
+            local ParentZIndex = ParentNode.ZIndex
+            local TargetZIndex = ParentZIndex + 1
+            
+            GradientLine.Size = LineSize
+            GradientLine.Position = LinePosition
+            GradientLine.Color = CurrentColor
+            GradientLine.Filled = true
+            GradientLine.ZIndex = TargetZIndex
+            GradientLine.Transparency = 1
+            
+            ParentNode:AddChild(GradientLine)
+            table.insert(GradientGroup, GradientLine)
         end
-        for Property, TargetValue in pairs(Tween.Target) do
-            local StartValue = Tween.Start[Property]
-            local InterpolatedValue
-            if typeof(StartValue) == "number" then
-                InterpolatedValue = Tween.Easing(Tween.TimeElapsed, StartValue, TargetValue - StartValue, Tween.Duration)
-            elseif typeof(StartValue) == "Vector2" then
-                local X = Tween.Easing(Tween.TimeElapsed, StartValue.X, TargetValue.X - StartValue.X, Tween.Duration)
-                local Y = Tween.Easing(Tween.TimeElapsed, StartValue.Y, TargetValue.Y - StartValue.Y, Tween.Duration)
-                InterpolatedValue = Vector2.new(X, Y)
-            elseif typeof(StartValue) == "Color3" then
-                local R = Tween.Easing(Tween.TimeElapsed, StartValue.R, TargetValue.R - StartValue.R, Tween.Duration)
-                local G = Tween.Easing(Tween.TimeElapsed, StartValue.G, TargetValue.G - StartValue.G, Tween.Duration)
-                local B = Tween.Easing(Tween.TimeElapsed, StartValue.B, TargetValue.B - StartValue.B, Tween.Duration)
-                InterpolatedValue = Color3.new(R, G, B)
-            end
-            Tween.Object[Property] = InterpolatedValue
-        end
-        if Tween.IsCompleted then
-            if Tween.OnComplete then task.spawn(Tween.OnComplete) end
-            table.remove(EngineState.TweenQueue, i)
+    else
+        local TotalWidth = Size.X
+        local StepWidth = TotalWidth / TotalSteps
+        
+        for Index = 0, TotalSteps - 1 do
+            local Alpha = Index / (TotalSteps - 1)
+            local CurrentColor = MathLib.LerpColor3(StartColor, EndColor, Alpha)
+            
+            local GradientLine = VirtualDOM.CreateInstance("Square")
+            local LineWidth = StepWidth + 1
+            local LineHeight = Size.Y
+            local LineSize = Vector2.new(LineWidth, LineHeight)
+            
+            local LineX = Index * StepWidth
+            local LineY = 0
+            local LinePosition = Vector2.new(LineX, LineY)
+            
+            local ParentZIndex = ParentNode.ZIndex
+            local TargetZIndex = ParentZIndex + 1
+            
+            GradientLine.Size = LineSize
+            GradientLine.Position = LinePosition
+            GradientLine.Color = CurrentColor
+            GradientLine.Filled = true
+            GradientLine.ZIndex = TargetZIndex
+            GradientLine.Transparency = 1
+            
+            ParentNode:AddChild(GradientLine)
+            table.insert(GradientGroup, GradientLine)
         end
     end
     
-    table.sort(EngineState.RenderQueue, function(A, B) return A.ZIndex < B.ZIndex end)
+    return GradientGroup
+end
+
+local EngineTick = function(DeltaTime)
+    local CurrentElapsed = EngineState.TimeElapsed
+    local NewElapsed = CurrentElapsed + DeltaTime
+    EngineState.TimeElapsed = NewElapsed
+    EngineState.DeltaTime = DeltaTime
     
-    local TopMostHoveredElement = nil
-    for _, Element in ipairs(EngineState.RenderQueue) do
-        Element:RenderToScreen()
-        if Element.Visible and Element.RenderObject and Element.RenderObject.Visible then
-            if Element.MouseEnter or Element.InputBegan or Element.InputEnded or Element.MouseScroll then
-                if MathLib.PointInRectangle(EngineState.MousePosition, Element.AbsolutePosition, Element.AbsoluteSize) then
-                    TopMostHoveredElement = Element
+    local MouseLocation = UserInputService:GetMouseLocation()
+    local PrevLocation = EngineState.PreviousMousePosition
+    local Difference = MouseLocation - PrevLocation
+    EngineState.MouseDelta = Difference
+    EngineState.PreviousMousePosition = MouseLocation
+    EngineState.MousePosition = MouseLocation
+    
+    local TweenList = EngineState.TweenQueue
+    local TweenCount = #TweenList
+    
+    for Index = TweenCount, 1, -1 do
+        local CurrentTween = TweenList[Index]
+        local TweenElapsed = CurrentTween.TimeElapsed
+        local TweenDuration = CurrentTween.Duration
+        local NewTweenElapsed = TweenElapsed + DeltaTime
+        CurrentTween.TimeElapsed = NewTweenElapsed
+        
+        if NewTweenElapsed >= TweenDuration then
+            CurrentTween.TimeElapsed = TweenDuration
+            CurrentTween.IsCompleted = true
+        end
+        
+        local CurrentElapsedForMath = CurrentTween.TimeElapsed
+        local TargetProperties = CurrentTween.Target
+        local StartProperties = CurrentTween.Start
+        local EasingFunction = CurrentTween.Easing
+        local TargetObject = CurrentTween.Object
+        
+        for PropertyName, TargetValue in pairs(TargetProperties) do
+            local StartValue = StartProperties[PropertyName]
+            local InterpolatedValue = nil
+            
+            local ValueType = typeof(StartValue)
+            if ValueType == "number" then
+                local ChangeValue = TargetValue - StartValue
+                local Result = EasingFunction(CurrentElapsedForMath, StartValue, ChangeValue, TweenDuration)
+                InterpolatedValue = Result
+            elseif ValueType == "Vector2" then
+                local XStart = StartValue.X
+                local YStart = StartValue.Y
+                local XTarget = TargetValue.X
+                local YTarget = TargetValue.Y
+                local XChange = XTarget - XStart
+                local YChange = YTarget - YStart
+                local XResult = EasingFunction(CurrentElapsedForMath, XStart, XChange, TweenDuration)
+                local YResult = EasingFunction(CurrentElapsedForMath, YStart, YChange, TweenDuration)
+                InterpolatedValue = Vector2.new(XResult, YResult)
+            elseif ValueType == "Color3" then
+                local RStart = StartValue.R
+                local GStart = StartValue.G
+                local BStart = StartValue.B
+                local RTarget = TargetValue.R
+                local GTarget = TargetValue.G
+                local BTarget = TargetValue.B
+                local RChange = RTarget - RStart
+                local GChange = GTarget - GStart
+                local BChange = BTarget - BStart
+                local RResult = EasingFunction(CurrentElapsedForMath, RStart, RChange, TweenDuration)
+                local GResult = EasingFunction(CurrentElapsedForMath, GStart, GChange, TweenDuration)
+                local BResult = EasingFunction(CurrentElapsedForMath, BStart, BChange, TweenDuration)
+                InterpolatedValue = Color3.new(RResult, GResult, BResult)
+            end
+            
+            TargetObject[PropertyName] = InterpolatedValue
+        end
+        
+        local IsDone = CurrentTween.IsCompleted
+        if IsDone == true then
+            local CompleteCallback = CurrentTween.OnComplete
+            if CompleteCallback ~= nil then
+                task.spawn(CompleteCallback)
+            end
+            table.remove(EngineState.TweenQueue, Index)
+        end
+    end
+    
+    local RenderList = EngineState.RenderQueue
+    table.sort(RenderList, function(ElementA, ElementB)
+        local ZA = ElementA.ZIndex
+        local ZB = ElementB.ZIndex
+        return ZA < ZB
+    end)
+    
+    local TopElement = nil
+    local EngineMouseX = EngineState.MousePosition.X
+    local EngineMouseY = EngineState.MousePosition.Y
+    local EngineMouseVector = Vector2.new(EngineMouseX, EngineMouseY)
+    
+    for Index, RenderElement in ipairs(RenderList) do
+        RenderElement:RenderToScreen()
+        
+        local IsElementVisible = RenderElement.Visible
+        local NativeObject = RenderElement.RenderObject
+        
+        if IsElementVisible == true then
+            if NativeObject ~= nil then
+                local NativeVisible = NativeObject.Visible
+                if NativeVisible == true then
+                    local HasEnterEvent = RenderElement.MouseEnter
+                    local HasLeaveEvent = RenderElement.MouseLeave
+                    local HasInputEvent = RenderElement.InputBegan
+                    local HasEndEvent = RenderElement.InputEnded
+                    local HasScrollEvent = RenderElement.MouseScroll
+                    
+                    if HasEnterEvent ~= nil or HasLeaveEvent ~= nil or HasInputEvent ~= nil or HasEndEvent ~= nil or HasScrollEvent ~= nil then
+                        local ElementPos = RenderElement.AbsolutePosition
+                        local ElementSize = RenderElement.AbsoluteSize
+                        local IsInside = MathLib.PointInRectangle(EngineMouseVector, ElementPos, ElementSize)
+                        if IsInside == true then
+                            TopElement = RenderElement
+                        end
+                    end
                 end
             end
         end
     end
     
-    if TopMostHoveredElement ~= EngineState.HoveredElements.Current then
-        if EngineState.HoveredElements.Current and EngineState.HoveredElements.Current.MouseLeave then
-            task.spawn(EngineState.HoveredElements.Current.MouseLeave)
+    local CurrentHovered = EngineState.HoveredElements.Current
+    if TopElement ~= CurrentHovered then
+        if CurrentHovered ~= nil then
+            local LeaveCallback = CurrentHovered.MouseLeave
+            if LeaveCallback ~= nil then
+                task.spawn(LeaveCallback)
+            end
         end
-        EngineState.HoveredElements.Current = TopMostHoveredElement
-        if TopMostHoveredElement and TopMostHoveredElement.MouseEnter then
-            task.spawn(TopMostHoveredElement.MouseEnter)
+        
+        EngineState.HoveredElements.Current = TopElement
+        
+        if TopElement ~= nil then
+            local EnterCallback = TopElement.MouseEnter
+            if EnterCallback ~= nil then
+                task.spawn(EnterCallback)
+            end
         end
     end
-end)
+end
 
-EngineState.InputBeganConnection = UserInputService.InputBegan:Connect(function(Input, GameProcessedEvent)
-    if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+EngineState.RenderConnection = RunService.RenderStepped:Connect(EngineTick)
+
+local InputBeganTick = function(InputData, ProcessedFlag)
+    local InputType = InputData.UserInputType
+    local MouseBtn1 = Enum.UserInputType.MouseButton1
+    local MouseBtn2 = Enum.UserInputType.MouseButton2
+    
+    if InputType == MouseBtn1 then
         EngineState.IsMouseDown = true
-        if EngineState.HoveredElements.Current and EngineState.HoveredElements.Current.InputBegan then
-            EngineState.ActiveInputTarget = EngineState.HoveredElements.Current
-            task.spawn(EngineState.HoveredElements.Current.InputBegan, Input)
+        local HoveredElement = EngineState.HoveredElements.Current
+        if HoveredElement ~= nil then
+            local InputCallback = HoveredElement.InputBegan
+            if InputCallback ~= nil then
+                EngineState.ActiveInputTarget = HoveredElement
+                task.spawn(InputCallback, InputData)
+            end
         end
-    elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
+    elseif InputType == MouseBtn2 then
         EngineState.IsRightMouseDown = true
-        if EngineState.HoveredElements.Current and EngineState.HoveredElements.Current.RightInputBegan then
-            task.spawn(EngineState.HoveredElements.Current.RightInputBegan, Input)
+        local HoveredElement = EngineState.HoveredElements.Current
+        if HoveredElement ~= nil then
+            local RightCallback = HoveredElement.RightInputBegan
+            if RightCallback ~= nil then
+                task.spawn(RightCallback, InputData)
+            end
         end
     end
-end)
+end
 
-EngineState.InputEndedConnection = UserInputService.InputEnded:Connect(function(Input, GameProcessedEvent)
-    if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+EngineState.InputBeganConnection = UserInputService.InputBegan:Connect(InputBeganTick)
+
+local InputEndedTick = function(InputData, ProcessedFlag)
+    local InputType = InputData.UserInputType
+    local MouseBtn1 = Enum.UserInputType.MouseButton1
+    local MouseBtn2 = Enum.UserInputType.MouseButton2
+    
+    if InputType == MouseBtn1 then
         EngineState.IsMouseDown = false
-        if EngineState.ActiveInputTarget and EngineState.ActiveInputTarget.InputEnded then
-            task.spawn(EngineState.ActiveInputTarget.InputEnded, Input)
+        local ActiveTarget = EngineState.ActiveInputTarget
+        if ActiveTarget ~= nil then
+            local EndCallback = ActiveTarget.InputEnded
+            if EndCallback ~= nil then
+                task.spawn(EndCallback, InputData)
+            end
         end
         EngineState.ActiveInputTarget = nil
-    elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
+    elseif InputType == MouseBtn2 then
         EngineState.IsRightMouseDown = false
     end
-end)
+end
 
-UserInputService.InputChanged:Connect(function(Input, GameProcessedEvent)
-    if Input.UserInputType == Enum.UserInputType.MouseWheel then
-        if EngineState.HoveredElements.Current and EngineState.HoveredElements.Current.MouseScroll then
-            task.spawn(EngineState.HoveredElements.Current.MouseScroll, Input.Position.Z)
+EngineState.InputEndedConnection = UserInputService.InputEnded:Connect(InputEndedTick)
+
+local InputChangedTick = function(InputData, ProcessedFlag)
+    local InputType = InputData.UserInputType
+    local MouseWheel = Enum.UserInputType.MouseWheel
+    
+    if InputType == MouseWheel then
+        local HoveredElement = EngineState.HoveredElements.Current
+        if HoveredElement ~= nil then
+            local ScrollCallback = HoveredElement.MouseScroll
+            if ScrollCallback ~= nil then
+                local ZDelta = InputData.Position.Z
+                task.spawn(ScrollCallback, ZDelta)
+            end
         end
     end
-end)
+end
+
+UserInputService.InputChanged:Connect(InputChangedTick)
 
 local CompkillerLib = {
     Windows = {},
     ToggledFlags = {},
-    ConfigName = "CK_Config",
-    DragPhysics = { TargetObject = nil, DragOffset = Vector2.new(0, 0), Velocity = Vector2.new(0, 0), Friction = 0.82, IsDragging = false },
+    ConfigName = "CK_Configuration_File",
+    DragPhysics = {
+        TargetObject = nil,
+        DragOffset = Vector2.new(0, 0),
+        Velocity = Vector2.new(0, 0),
+        Friction = 0.82,
+        IsDragging = false
+    },
     Notifications = {}
 }
 
-RunService.RenderStepped:Connect(function()
-    local Physics = CompkillerLib.DragPhysics
-    if Physics.IsDragging and Physics.TargetObject then
-        local TargetPosition = EngineState.MousePosition + Physics.DragOffset
-        Physics.Velocity = (TargetPosition - Physics.TargetObject.Position) * 0.4
-        Physics.TargetObject.Position = Physics.TargetObject.Position + Physics.Velocity
-    elseif Physics.TargetObject and not Physics.IsDragging then
-        if math.abs(Physics.Velocity.X) > 0.1 or math.abs(Physics.Velocity.Y) > 0.1 then
-            Physics.Velocity = Physics.Velocity * Physics.Friction
-            Physics.TargetObject.Position = Physics.TargetObject.Position + Physics.Velocity
-        else
-            Physics.TargetObject = nil
+local PhysicsTick = function()
+    local PhysicsData = CompkillerLib.DragPhysics
+    local IsDraggingState = PhysicsData.IsDragging
+    local TargetObj = PhysicsData.TargetObject
+    
+    if IsDraggingState == true then
+        if TargetObj ~= nil then
+            local MousePos = EngineState.MousePosition
+            local Offset = PhysicsData.DragOffset
+            local TargetPosition = MousePos + Offset
+            local CurrentPosition = TargetObj.Position
+            local Difference = TargetPosition - CurrentPosition
+            local NewVelocity = Difference * 0.4
+            PhysicsData.Velocity = NewVelocity
+            local AppliedPosition = CurrentPosition + NewVelocity
+            TargetObj.Position = AppliedPosition
+        end
+    else
+        if TargetObj ~= nil then
+            local CurrentVelocity = PhysicsData.Velocity
+            local VelX = CurrentVelocity.X
+            local VelY = CurrentVelocity.Y
+            local AbsX = math.abs(VelX)
+            local AbsY = math.abs(VelY)
+            
+            if AbsX > 0.1 or AbsY > 0.1 then
+                local FrictionValue = PhysicsData.Friction
+                local DampenedVelocity = CurrentVelocity * FrictionValue
+                PhysicsData.Velocity = DampenedVelocity
+                local CurrentPosition = TargetObj.Position
+                local AppliedPosition = CurrentPosition + DampenedVelocity
+                TargetObj.Position = AppliedPosition
+            else
+                PhysicsData.TargetObject = nil
+            end
         end
     end
-end)
-
-function CompkillerLib:Notify(Title, Content, Duration)
-    Duration = Duration or 3
-    local Theme = ThemeManager.Presets[ThemeManager.CurrentTheme]
-    
-    local NotifBase = VirtualDOM.CreateInstance("Square")
-    NotifBase.Size = Vector2.new(250, 60)
-    NotifBase.Position = Vector2.new(CurrentCamera.ViewportSize.X, CurrentCamera.ViewportSize.Y - (#self.Notifications * 70) - 70)
-    NotifBase.Color = Theme.WindowBackground
-    NotifBase.ZIndex = 500
-    
-    local NotifOut = VirtualDOM.CreateInstance("Square")
-    NotifOut.Size = NotifBase.Size
-    NotifOut.Color = Theme.SectionOutline
-    NotifOut.Filled = false
-    NotifOut.ZIndex = 501
-    NotifBase:AddChild(NotifOut)
-    
-    local NotifBar = VirtualDOM.CreateInstance("Square")
-    NotifBar.Size = Vector2.new(2, NotifBase.Size.Y)
-    NotifBar.Color = Theme.AccentPrimary
-    NotifBar.ZIndex = 502
-    NotifBase:AddChild(NotifBar)
-    
-    local TitleLabel = VirtualDOM.CreateInstance("Text")
-    TitleLabel.Text = Title
-    TitleLabel.Size = 14
-    TitleLabel.Position = Vector2.new(10, 8)
-    TitleLabel.Color = Theme.AccentSecondary
-    TitleLabel.ZIndex = 502
-    NotifBase:AddChild(TitleLabel)
-    
-    local ContentLabel = VirtualDOM.CreateInstance("Text")
-    ContentLabel.Text = Content
-    ContentLabel.Size = 13
-    ContentLabel.Position = Vector2.new(10, 30)
-    ContentLabel.Color = Theme.TextPrimary
-    ContentLabel.ZIndex = 502
-    NotifBase:AddChild(ContentLabel)
-    
-    table.insert(self.Notifications, NotifBase)
-    Animator.ConstructTween(NotifBase, {Position = Vector2.new(CurrentCamera.ViewportSize.X - 260, NotifBase.Position.Y)}, 0.4, "Expo", "Out")
-    
-    task.delay(Duration, function()
-        Animator.ConstructTween(NotifBase, {Position = Vector2.new(CurrentCamera.ViewportSize.X, NotifBase.Position.Y)}, 0.4, "Expo", "In", function()
-            NotifBase:Destroy()
-            for i, n in ipairs(self.Notifications) do
-                if n == NotifBase then table.remove(self.Notifications, i) break end
-            end
-            for i, n in ipairs(self.Notifications) do
-                Animator.ConstructTween(n, {Position = Vector2.new(CurrentCamera.ViewportSize.X - 260, CurrentCamera.ViewportSize.Y - (i * 70))}, 0.3, "Expo", "Out")
-            end
-        end)
-    end)
 end
 
-function CompkillerLib:CreateWindow(Configuration)
-    Configuration = Configuration or {}
-    Configuration.Title = Configuration.Title or "COMPKILLER V4"
-    Configuration.Size = Configuration.Size or Vector2.new(710, 520)
-    Configuration.Position = Configuration.Position or Vector2.new(CurrentCamera.ViewportSize.X / 2 - Configuration.Size.X / 2, CurrentCamera.ViewportSize.Y / 2 - Configuration.Size.Y / 2)
+RunService.RenderStepped:Connect(PhysicsTick)
+
+function CompkillerLib:CreateWindow(ConfigurationTable)
+    local Config = ConfigurationTable or {}
+    local TitleName = Config.Title or "COMPKILLER V4 INTERNAL"
+    local SizeVector = Config.Size or Vector2.new(710, 520)
     
-    local Theme = ThemeManager.Presets[ThemeManager.CurrentTheme]
+    local ViewportX = CurrentCamera.ViewportSize.X
+    local ViewportY = CurrentCamera.ViewportSize.Y
+    local HalfViewX = ViewportX / 2
+    local HalfViewY = ViewportY / 2
+    local HalfSizeX = SizeVector.X / 2
+    local HalfSizeY = SizeVector.Y / 2
+    local CenterX = HalfViewX - HalfSizeX
+    local CenterY = HalfViewY - HalfSizeY
+    local DefaultPosition = Vector2.new(CenterX, CenterY)
+    local PositionVector = Config.Position or DefaultPosition
     
-    local WindowAPI = { Tabs = {}, SelectedTab = nil, State = { IsOpen = true } }
+    local ActiveThemeString = ThemeManager.CurrentTheme
+    local ThemeConfig = ThemeManager.Presets[ActiveThemeString]
+    
+    local WindowAPI = {
+        Tabs = {},
+        SelectedTab = nil,
+        State = {
+            IsOpen = true
+        }
+    }
     
     local MainCanvas = VirtualDOM.CreateInstance("Square")
-    MainCanvas.Size = Configuration.Size
-    MainCanvas.Position = Configuration.Position
-    MainCanvas.Color = Theme.WindowBackground
+    MainCanvas.Size = SizeVector
+    MainCanvas.Position = PositionVector
+    MainCanvas.Color = ThemeConfig.WindowBackground
     MainCanvas.ZIndex = 100
     
-    VisualEffects.GenerateDropShadow(MainCanvas, Configuration.Size, Vector2.new(0, 0), 25, 0.4, 20)
+    local ShadowSpread = 25
+    local ShadowOpacity = 0.4
+    local ShadowQuality = 20
+    local ShadowOffset = Vector2.new(0, 0)
+    VisualEffects.GenerateDropShadow(MainCanvas, SizeVector, ShadowOffset, ShadowSpread, ShadowOpacity, ShadowQuality)
     
     local StrokeOuter = VirtualDOM.CreateInstance("Square")
-    StrokeOuter.Size = Configuration.Size
-    StrokeOuter.Color = Theme.OutlineOuter
+    StrokeOuter.Size = SizeVector
+    StrokeOuter.Color = ThemeConfig.OutlineOuter
     StrokeOuter.Filled = false
     StrokeOuter.ZIndex = 101
     MainCanvas:AddChild(StrokeOuter)
     
     local StrokeInner = VirtualDOM.CreateInstance("Square")
-    StrokeInner.Size = Configuration.Size - Vector2.new(2, 2)
-    StrokeInner.Position = Vector2.new(1, 1)
-    StrokeInner.Color = Theme.OutlineInner
+    local InnerSizeOffset = Vector2.new(2, 2)
+    local InnerPosOffset = Vector2.new(1, 1)
+    StrokeInner.Size = SizeVector - InnerSizeOffset
+    StrokeInner.Position = InnerPosOffset
+    StrokeInner.Color = ThemeConfig.OutlineInner
     StrokeInner.Filled = false
     StrokeInner.ZIndex = 101
     MainCanvas:AddChild(StrokeInner)
     
     local TopAccent = VirtualDOM.CreateInstance("Square")
-    TopAccent.Size = Vector2.new(Configuration.Size.X - 2, 2)
-    TopAccent.Position = Vector2.new(1, 1)
-    TopAccent.Color = Theme.AccentPrimary
+    local AccentSizeVector = Vector2.new(SizeVector.X - 2, 2)
+    local AccentPosVector = Vector2.new(1, 1)
+    TopAccent.Size = AccentSizeVector
+    TopAccent.Position = AccentPosVector
+    TopAccent.Color = ThemeConfig.AccentPrimary
     TopAccent.ZIndex = 102
     MainCanvas:AddChild(TopAccent)
     
+    local SidebarWidth = 180
+    local SidebarHeight = SizeVector.Y - 2
     local Sidebar = VirtualDOM.CreateInstance("Square")
-    Sidebar.Size = Vector2.new(180, Configuration.Size.Y - 2)
+    Sidebar.Size = Vector2.new(SidebarWidth, SidebarHeight)
     Sidebar.Position = Vector2.new(1, 1)
-    Sidebar.Color = Theme.SidebarBackground
+    Sidebar.Color = ThemeConfig.SidebarBackground
     Sidebar.ZIndex = 101
     MainCanvas:AddChild(Sidebar)
     
     local SidebarSeparator = VirtualDOM.CreateInstance("Square")
-    SidebarSeparator.Size = Vector2.new(1, Sidebar.Size.Y)
-    SidebarSeparator.Position = Vector2.new(179, 0)
-    SidebarSeparator.Color = Theme.SectionOutline
+    local SeparatorWidth = 1
+    local SeparatorHeight = Sidebar.Size.Y
+    SidebarSeparator.Size = Vector2.new(SeparatorWidth, SeparatorHeight)
+    SidebarSeparator.Position = Vector2.new(SidebarWidth - 1, 0)
+    SidebarSeparator.Color = ThemeConfig.SectionOutline
     SidebarSeparator.ZIndex = 102
     Sidebar:AddChild(SidebarSeparator)
     
     local TitleLabel = VirtualDOM.CreateInstance("Text")
-    TitleLabel.Text = Configuration.Title
+    TitleLabel.Text = TitleName
     TitleLabel.Size = 14
-    TitleLabel.Position = Vector2.new(90, 25)
-    TitleLabel.Color = Theme.AccentSecondary
+    TitleLabel.Position = Vector2.new(SidebarWidth / 2, 25)
+    TitleLabel.Color = ThemeConfig.AccentSecondary
     TitleLabel.Center = true
     TitleLabel.ZIndex = 105
     Sidebar:AddChild(TitleLabel)
     
     local TitleUnderline = VirtualDOM.CreateInstance("Square")
-    TitleUnderline.Size = Vector2.new(140, 1)
+    local UnderlineWidth = 140
+    local UnderlineHeight = 1
+    TitleUnderline.Size = Vector2.new(UnderlineWidth, UnderlineHeight)
     TitleUnderline.Position = Vector2.new(20, 45)
-    TitleUnderline.Color = Theme.SeparatorLine
+    TitleUnderline.Color = ThemeConfig.SeparatorLine
     TitleUnderline.ZIndex = 105
     Sidebar:AddChild(TitleUnderline)
     
     local TabContainer = VirtualDOM.CreateInstance("Square")
-    TabContainer.Size = Vector2.new(180, Configuration.Size.Y - 60)
+    local TabContainerWidth = SidebarWidth
+    local TabContainerHeight = SizeVector.Y - 60
+    TabContainer.Size = Vector2.new(TabContainerWidth, TabContainerHeight)
     TabContainer.Position = Vector2.new(0, 55)
     TabContainer.Transparency = 0
     TabContainer.ZIndex = 102
     Sidebar:AddChild(TabContainer)
     
+    local ContentWidth = SizeVector.X - SidebarWidth
+    local ContentHeight = SizeVector.Y - 2
     local ContentCanvas = VirtualDOM.CreateInstance("Square")
-    ContentCanvas.Size = Vector2.new(Configuration.Size.X - 180, Configuration.Size.Y - 2)
-    ContentCanvas.Position = Vector2.new(180, 1)
-    ContentCanvas.Color = Theme.WindowBackground
+    ContentCanvas.Size = Vector2.new(ContentWidth, ContentHeight)
+    ContentCanvas.Position = Vector2.new(SidebarWidth, 1)
+    ContentCanvas.Color = ThemeConfig.WindowBackground
     ContentCanvas.ZIndex = 101
     MainCanvas:AddChild(ContentCanvas)
     
-    Sidebar.InputBegan = function(Input)
-        CompkillerLib.DragPhysics.TargetObject = MainCanvas
-        CompkillerLib.DragPhysics.DragOffset = MainCanvas.Position - EngineState.MousePosition
-        CompkillerLib.DragPhysics.IsDragging = true
+    local SidebarInputBegan = function(InputInfo)
+        local PhysicsData = CompkillerLib.DragPhysics
+        PhysicsData.TargetObject = MainCanvas
+        local CanvasPos = MainCanvas.Position
+        local MousePos = EngineState.MousePosition
+        local CalculatedOffset = CanvasPos - MousePos
+        PhysicsData.DragOffset = CalculatedOffset
+        PhysicsData.IsDragging = true
     end
+    Sidebar.InputBegan = SidebarInputBegan
     
-    Sidebar.InputEnded = function(Input)
-        CompkillerLib.DragPhysics.IsDragging = false
+    local SidebarInputEnded = function(InputInfo)
+        local PhysicsData = CompkillerLib.DragPhysics
+        PhysicsData.IsDragging = false
     end
+    Sidebar.InputEnded = SidebarInputEnded
     
-    UserInputService.InputBegan:Connect(function(Input, Processed)
-        if Processed and not EngineState.TypingActive then return end
-        if Input.KeyCode == Enum.KeyCode.RightShift or Input.KeyCode == Enum.KeyCode.Insert then
-            if not EngineState.TypingActive then
-                WindowAPI.State.IsOpen = not WindowAPI.State.IsOpen
-                MainCanvas.Visible = WindowAPI.State.IsOpen
+    local KeybindToggleHook = function(InputData, ProcessedState)
+        local TypingStatus = EngineState.TypingActive
+        if ProcessedState == true then
+            if TypingStatus == false then
+                return
             end
         end
-    end)
+        local Key = InputData.KeyCode
+        local RShift = Enum.KeyCode.RightShift
+        local Insert = Enum.KeyCode.Insert
+        
+        if Key == RShift or Key == Insert then
+            if TypingStatus == false then
+                local CurrentWindowState = WindowAPI.State.IsOpen
+                local InvertedState = not CurrentWindowState
+                WindowAPI.State.IsOpen = InvertedState
+                MainCanvas.Visible = InvertedState
+            end
+        end
+    end
+    UserInputService.InputBegan:Connect(KeybindToggleHook)
     
-    function WindowAPI:CreateTab(TabConfiguration)
-        TabConfiguration = TabConfiguration or {}
-        TabConfiguration.Name = TabConfiguration.Name or "New Tab"
+    function WindowAPI:CreateTab(TabConfigTable)
+        local TabConfig = TabConfigTable or {}
+        local TabName = TabConfig.Name or "New Tab"
         
-        local TabAPI = { Sections = {}, IsActive = false }
+        local TabAPI = {
+            Sections = {},
+            IsActive = false
+        }
         
+        local TabButtonHeight = 38
         local TabButton = VirtualDOM.CreateInstance("Square")
-        TabButton.Size = Vector2.new(180, 38)
-        TabButton.Color = Theme.SidebarBackground
+        TabButton.Size = Vector2.new(SidebarWidth, TabButtonHeight)
+        TabButton.Color = ThemeConfig.SidebarBackground
         TabButton.ZIndex = 103
         TabContainer:AddChild(TabButton)
         
+        local HighlightWidth = 3
         local TabHighlight = VirtualDOM.CreateInstance("Square")
-        TabHighlight.Size = Vector2.new(3, 38)
-        TabHighlight.Color = Theme.AccentPrimary
+        TabHighlight.Size = Vector2.new(HighlightWidth, TabButtonHeight)
+        TabHighlight.Color = ThemeConfig.AccentPrimary
         TabHighlight.Transparency = 0
         TabHighlight.ZIndex = 104
         TabButton:AddChild(TabHighlight)
         
         local TabText = VirtualDOM.CreateInstance("Text")
-        TabText.Text = TabConfiguration.Name
+        TabText.Text = TabName
         TabText.Size = 13
         TabText.Position = Vector2.new(30, 12)
-        TabText.Color = Theme.TextMuted
+        TabText.Color = ThemeConfig.TextMuted
         TabText.ZIndex = 104
         TabButton:AddChild(TabText)
         
@@ -651,749 +1388,323 @@ function CompkillerLib:CreateWindow(Configuration)
         TabPage.ZIndex = 102
         ContentCanvas:AddChild(TabPage)
         
+        local Padding = 12
+        local InnerPadding = 6
+        local ColumnWidth = (TabPage.Size.X / 2) - (Padding + InnerPadding)
+        local ColumnHeight = TabPage.Size.Y - (Padding * 2)
+        
         local LeftColumn = VirtualDOM.CreateInstance("Square")
-        LeftColumn.Size = Vector2.new((TabPage.Size.X / 2) - 18, TabPage.Size.Y - 20)
-        LeftColumn.Position = Vector2.new(12, 12)
+        LeftColumn.Size = Vector2.new(ColumnWidth, ColumnHeight)
+        LeftColumn.Position = Vector2.new(Padding, Padding)
         LeftColumn.Transparency = 0
         LeftColumn.ZIndex = 103
         TabPage:AddChild(LeftColumn)
         
         local RightColumn = VirtualDOM.CreateInstance("Square")
-        RightColumn.Size = Vector2.new((TabPage.Size.X / 2) - 18, TabPage.Size.Y - 20)
-        RightColumn.Position = Vector2.new((TabPage.Size.X / 2) + 6, 12)
+        RightColumn.Size = Vector2.new(ColumnWidth, ColumnHeight)
+        local RightColumnX = (TabPage.Size.X / 2) + InnerPadding
+        RightColumn.Position = Vector2.new(RightColumnX, Padding)
         RightColumn.Transparency = 0
         RightColumn.ZIndex = 103
         TabPage:AddChild(RightColumn)
         
-        TabButton.MouseEnter = function()
-            if not TabAPI.IsActive then Animator.ConstructTween(TabText, {Color = Theme.TextSecondary}, 0.2, "Quad", "Out") end
-        end
-        
-        TabButton.MouseLeave = function()
-            if not TabAPI.IsActive then Animator.ConstructTween(TabText, {Color = Theme.TextMuted}, 0.2, "Quad", "Out") end
-        end
-        
-        TabButton.InputBegan = function()
-            for _, ExistingTab in ipairs(WindowAPI.Tabs) do
-                ExistingTab.TabPage.Visible = false
-                ExistingTab.IsActive = false
-                Animator.ConstructTween(ExistingTab.TabHighlight, {Transparency = 0}, 0.3, "Quad", "Out")
-                Animator.ConstructTween(ExistingTab.TabText, {Color = Theme.TextMuted}, 0.3, "Quad", "Out")
+        local TabEnterHook = function()
+            local ActiveState = TabAPI.IsActive
+            if ActiveState == false then
+                local TweenColor = ThemeConfig.TextSecondary
+                local TweenProps = {Color = TweenColor}
+                Animator.ConstructTween(TabText, TweenProps, 0.2, "Quad", "Out")
             end
+        end
+        TabButton.MouseEnter = TabEnterHook
+        
+        local TabLeaveHook = function()
+            local ActiveState = TabAPI.IsActive
+            if ActiveState == false then
+                local TweenColor = ThemeConfig.TextMuted
+                local TweenProps = {Color = TweenColor}
+                Animator.ConstructTween(TabText, TweenProps, 0.2, "Quad", "Out")
+            end
+        end
+        TabButton.MouseLeave = TabLeaveHook
+        
+        local TabInputHook = function()
+            local WindowTabs = WindowAPI.Tabs
+            for Index, ExistingTab in ipairs(WindowTabs) do
+                local PageNode = ExistingTab.TabPage
+                PageNode.Visible = false
+                ExistingTab.IsActive = false
+                
+                local HighlightNode = ExistingTab.TabHighlight
+                local TransProps = {Transparency = 0}
+                Animator.ConstructTween(HighlightNode, TransProps, 0.3, "Quad", "Out")
+                
+                local TextNode = ExistingTab.TabText
+                local ColorProps = {Color = ThemeConfig.TextMuted}
+                Animator.ConstructTween(TextNode, ColorProps, 0.3, "Quad", "Out")
+            end
+            
             TabPage.Visible = true
             TabAPI.IsActive = true
             WindowAPI.SelectedTab = TabAPI
-            Animator.ConstructTween(TabHighlight, {Transparency = 1}, 0.3, "Quint", "Out")
-            Animator.ConstructTween(TabText, {Color = Theme.TextPrimary}, 0.3, "Quint", "Out")
+            
+            local ActiveTransProps = {Transparency = 1}
+            Animator.ConstructTween(TabHighlight, ActiveTransProps, 0.3, "Quint", "Out")
+            
+            local ActiveColorProps = {Color = ThemeConfig.TextPrimary}
+            Animator.ConstructTween(TabText, ActiveColorProps, 0.3, "Quint", "Out")
         end
+        TabButton.InputBegan = TabInputHook
         
         table.insert(WindowAPI.Tabs, TabAPI)
-        TabAPI.TabPage = TabPage; TabAPI.TabHighlight = TabHighlight; TabAPI.TabText = TabText
+        TabAPI.TabPage = TabPage
+        TabAPI.TabHighlight = TabHighlight
+        TabAPI.TabText = TabText
         
-        local CurrentTabY = 0
-        for _, Child in ipairs(TabContainer.Children) do
-            if Child.Type == "Square" and Child.Size.X == 180 then
-                Child.Position = Vector2.new(0, CurrentTabY)
-                CurrentTabY = CurrentTabY + Child.Size.Y
+        local CurrentTabYPosition = 0
+        local ContainerChildren = TabContainer.Children
+        for Index, ChildNode in ipairs(ContainerChildren) do
+            local NodeType = ChildNode.Type
+            local NodeWidth = ChildNode.Size.X
+            if NodeType == "Square" then
+                if NodeWidth == SidebarWidth then
+                    local NewPosition = Vector2.new(0, CurrentTabYPosition)
+                    ChildNode.Position = NewPosition
+                    local NodeHeight = ChildNode.Size.Y
+                    CurrentTabYPosition = CurrentTabYPosition + NodeHeight
+                end
             end
         end
         
-        if #WindowAPI.Tabs == 1 then TabButton.InputBegan() end
+        local TabCount = #WindowAPI.Tabs
+        if TabCount == 1 then
+            TabInputHook()
+        end
         
-        function TabAPI:CreateSection(SectionConfiguration)
-            SectionConfiguration = SectionConfiguration or {}
-            SectionConfiguration.Name = SectionConfiguration.Name or "Data Section"
-            SectionConfiguration.Side = SectionConfiguration.Side or "Left"
+        function TabAPI:CreateSection(SectionConfigTable)
+            local SectionConfig = SectionConfigTable or {}
+            local SectionName = SectionConfig.Name or "Data Section"
+            local SectionSide = SectionConfig.Side or "Left"
             
-            local TargetColumn = string.lower(SectionConfiguration.Side) == "left" and LeftColumn or RightColumn
-            local SectionAPI = { Elements = {} }
+            local TargetColumn = LeftColumn
+            local SideLower = string.lower(SectionSide)
+            if SideLower == "right" then
+                TargetColumn = RightColumn
+            end
             
+            local SectionAPI = {
+                Elements = {}
+            }
+            
+            local BaseSectionHeight = 40
             local SectionCanvas = VirtualDOM.CreateInstance("Square")
-            SectionCanvas.Size = Vector2.new(TargetColumn.Size.X, 40)
-            SectionCanvas.Color = Theme.SectionBackground
+            SectionCanvas.Size = Vector2.new(TargetColumn.Size.X, BaseSectionHeight)
+            SectionCanvas.Color = ThemeConfig.SectionBackground
             SectionCanvas.ZIndex = 104
             TargetColumn:AddChild(SectionCanvas)
             
             local SectionOutline = VirtualDOM.CreateInstance("Square")
             SectionOutline.Size = SectionCanvas.Size
-            SectionOutline.Color = Theme.SectionOutline
+            SectionOutline.Color = ThemeConfig.SectionOutline
             SectionOutline.Filled = false
             SectionOutline.ZIndex = 105
             SectionCanvas:AddChild(SectionOutline)
             
             local SectionInline = VirtualDOM.CreateInstance("Square")
-            SectionInline.Size = SectionCanvas.Size - Vector2.new(2, 2)
-            SectionInline.Position = Vector2.new(1, 1)
-            SectionInline.Color = Theme.OutlineInner
+            local SectionInlineOffset = Vector2.new(2, 2)
+            local SectionInlinePos = Vector2.new(1, 1)
+            SectionInline.Size = SectionCanvas.Size - SectionInlineOffset
+            SectionInline.Position = SectionInlinePos
+            SectionInline.Color = ThemeConfig.OutlineInner
             SectionInline.Filled = false
             SectionInline.ZIndex = 105
             SectionCanvas:AddChild(SectionInline)
             
+            local HeaderHeight = 25
             local SectionHeader = VirtualDOM.CreateInstance("Square")
-            SectionHeader.Size = Vector2.new(SectionCanvas.Size.X - 2, 25)
+            SectionHeader.Size = Vector2.new(SectionCanvas.Size.X - 2, HeaderHeight)
             SectionHeader.Position = Vector2.new(1, 1)
-            SectionHeader.Color = Theme.ElementBackground
+            SectionHeader.Color = ThemeConfig.ElementBackground
             SectionHeader.ZIndex = 105
             SectionCanvas:AddChild(SectionHeader)
             
             local SectionAccent = VirtualDOM.CreateInstance("Square")
-            SectionAccent.Size = Vector2.new(SectionCanvas.Size.X - 2, 1)
+            local AccentHeight = 1
+            SectionAccent.Size = Vector2.new(SectionCanvas.Size.X - 2, AccentHeight)
             SectionAccent.Position = Vector2.new(1, 1)
-            SectionAccent.Color = Theme.AccentPrimary
+            SectionAccent.Color = ThemeConfig.AccentPrimary
             SectionAccent.ZIndex = 106
             SectionCanvas:AddChild(SectionAccent)
             
             local SectionTitle = VirtualDOM.CreateInstance("Text")
-            SectionTitle.Text = SectionConfiguration.Name
+            SectionTitle.Text = SectionName
             SectionTitle.Size = 13
             SectionTitle.Position = Vector2.new(10, 6)
-            SectionTitle.Color = Theme.TextPrimary
+            SectionTitle.Color = ThemeConfig.TextPrimary
             SectionTitle.ZIndex = 106
             SectionHeader:AddChild(SectionTitle)
             
             local ItemContainer = VirtualDOM.CreateInstance("Square")
+            local ContainerY = 32
             ItemContainer.Size = Vector2.new(SectionCanvas.Size.X, 0)
-            ItemContainer.Position = Vector2.new(0, 32)
+            ItemContainer.Position = Vector2.new(0, ContainerY)
             ItemContainer.Transparency = 0
             ItemContainer.ZIndex = 105
             SectionCanvas:AddChild(ItemContainer)
             
-            local function RefreshLayouts()
-                local ContentY = 0
-                for _, Element in ipairs(ItemContainer.Children) do
-                    if Element.Visible and Element.Type == "Square" and not Element.FloatingLayer then
-                        Element.Position = Vector2.new(0, ContentY)
-                        ContentY = ContentY + Element.Size.Y + 6
+            local RefreshLayoutsFunction = function()
+                local ContentYPosition = 0
+                local ElementPadding = 6
+                local ElementsList = ItemContainer.Children
+                
+                for Index, ElementNode in ipairs(ElementsList) do
+                    local ElementVisible = ElementNode.Visible
+                    local ElementType = ElementNode.Type
+                    local ElementFloating = ElementNode.FloatingLayer
+                    
+                    if ElementVisible == true then
+                        if ElementType == "Square" then
+                            if ElementFloating == false then
+                                local NewPosition = Vector2.new(0, ContentYPosition)
+                                ElementNode.Position = NewPosition
+                                local ElementHeight = ElementNode.Size.Y
+                                ContentYPosition = ContentYPosition + ElementHeight + ElementPadding
+                            end
+                        end
                     end
                 end
-                ItemContainer.Size = Vector2.new(SectionCanvas.Size.X, ContentY)
-                SectionCanvas.Size = Vector2.new(SectionCanvas.Size.X, ContentY + 40)
-                SectionOutline.Size = SectionCanvas.Size
-                SectionInline.Size = SectionCanvas.Size - Vector2.new(2, 2)
                 
-                local ColumnY = 0
-                for _, Section in ipairs(TargetColumn.Children) do
-                    if Section.Visible then
-                        Section.Position = Vector2.new(0, ColumnY)
-                        ColumnY = ColumnY + Section.Size.Y + 12
+                local NewContainerSize = Vector2.new(SectionCanvas.Size.X, ContentYPosition)
+                ItemContainer.Size = NewContainerSize
+                
+                local NewCanvasHeight = ContentYPosition + 40
+                local NewCanvasSize = Vector2.new(SectionCanvas.Size.X, NewCanvasHeight)
+                SectionCanvas.Size = NewCanvasSize
+                SectionOutline.Size = NewCanvasSize
+                
+                local NewInlineSize = NewCanvasSize - Vector2.new(2, 2)
+                SectionInline.Size = NewInlineSize
+                
+                local ColumnYPosition = 0
+                local SectionPadding = 12
+                local SectionsList = TargetColumn.Children
+                
+                for Index, SectionNode in ipairs(SectionsList) do
+                    local SectionVisible = SectionNode.Visible
+                    if SectionVisible == true then
+                        local NewPosition = Vector2.new(0, ColumnYPosition)
+                        SectionNode.Position = NewPosition
+                        local SectionHeight = SectionNode.Size.Y
+                        ColumnYPosition = ColumnYPosition + SectionHeight + SectionPadding
                     end
                 end
             end
             
-            function SectionAPI:AddToggle(ToggleConfig)
-                ToggleConfig.Name = ToggleConfig.Name or "Toggle"
-                ToggleConfig.Default = ToggleConfig.Default or false
-                ToggleConfig.Flag = ToggleConfig.Flag or tostring(math.random(100000, 999999))
+            function SectionAPI:AddToggle(ToggleConfigTable)
+                local ToggleConfig = ToggleConfigTable or {}
+                local ToggleName = ToggleConfig.Name or "Toggle"
+                local ToggleDefault = ToggleConfig.Default or false
+                local RandomId = tostring(math.random(100000, 999999))
+                local ToggleFlag = ToggleConfig.Flag or RandomId
                 
-                local ToggleAPI = { Value = ToggleConfig.Default }
+                local ToggleAPI = {
+                    Value = ToggleDefault
+                }
                 
+                local ElementHeight = 18
                 local ElementCanvas = VirtualDOM.CreateInstance("Square")
-                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, 18)
+                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, ElementHeight)
                 ElementCanvas.Transparency = 0
                 ItemContainer:AddChild(ElementCanvas)
                 
+                local CheckboxSize = 12
                 local CheckboxBg = VirtualDOM.CreateInstance("Square")
-                CheckboxBg.Size = Vector2.new(12, 12)
+                CheckboxBg.Size = Vector2.new(CheckboxSize, CheckboxSize)
                 CheckboxBg.Position = Vector2.new(12, 3)
-                CheckboxBg.Color = Theme.ElementBackground
+                CheckboxBg.Color = ThemeConfig.ElementBackground
                 CheckboxBg.ZIndex = 106
                 ElementCanvas:AddChild(CheckboxBg)
                 
                 local CheckboxOut = VirtualDOM.CreateInstance("Square")
-                CheckboxOut.Size = Vector2.new(12, 12)
+                CheckboxOut.Size = Vector2.new(CheckboxSize, CheckboxSize)
                 CheckboxOut.Position = Vector2.new(12, 3)
-                CheckboxOut.Color = ToggleAPI.Value and Theme.AccentPrimary or Theme.SectionOutline
+                local OutlineColor = ThemeConfig.SectionOutline
+                if ToggleAPI.Value == true then
+                    OutlineColor = ThemeConfig.AccentPrimary
+                end
+                CheckboxOut.Color = OutlineColor
                 CheckboxOut.Filled = false
                 CheckboxOut.ZIndex = 107
                 ElementCanvas:AddChild(CheckboxOut)
                 
+                local FillSize = 10
                 local CheckboxFill = VirtualDOM.CreateInstance("Square")
-                CheckboxFill.Size = Vector2.new(10, 10)
+                CheckboxFill.Size = Vector2.new(FillSize, FillSize)
                 CheckboxFill.Position = Vector2.new(13, 4)
-                CheckboxFill.Color = Theme.AccentPrimary
-                CheckboxFill.Transparency = ToggleAPI.Value and 1 or 0
+                CheckboxFill.Color = ThemeConfig.AccentPrimary
+                local FillTransparency = 0
+                if ToggleAPI.Value == true then
+                    FillTransparency = 1
+                end
+                CheckboxFill.Transparency = FillTransparency
                 CheckboxFill.ZIndex = 107
                 ElementCanvas:AddChild(CheckboxFill)
                 
                 local ToggleLabel = VirtualDOM.CreateInstance("Text")
-                ToggleLabel.Text = ToggleConfig.Name
+                ToggleLabel.Text = ToggleName
                 ToggleLabel.Size = 13
                 ToggleLabel.Position = Vector2.new(32, 2)
-                ToggleLabel.Color = ToggleAPI.Value and Theme.TextPrimary or Theme.TextMuted
+                local LabelColor = ThemeConfig.TextMuted
+                if ToggleAPI.Value == true then
+                    LabelColor = ThemeConfig.TextPrimary
+                end
+                ToggleLabel.Color = LabelColor
                 ToggleLabel.ZIndex = 106
                 ElementCanvas:AddChild(ToggleLabel)
                 
-                ElementCanvas.InputBegan = function()
-                    ToggleAPI.Value = not ToggleAPI.Value
-                    Animator.ConstructTween(CheckboxFill, {Transparency = ToggleAPI.Value and 1 or 0}, 0.2, "Quint", "Out")
-                    Animator.ConstructTween(CheckboxOut, {Color = ToggleAPI.Value and Theme.AccentPrimary or Theme.SectionOutline}, 0.2, "Quint", "Out")
-                    Animator.ConstructTween(ToggleLabel, {Color = ToggleAPI.Value and Theme.TextPrimary or Theme.TextMuted}, 0.2, "Quint", "Out")
-                    if ToggleConfig.Callback then task.spawn(ToggleConfig.Callback, ToggleAPI.Value) end
-                end
-                
-                CompkillerLib.ToggledFlags[ToggleConfig.Flag] = ToggleAPI
-                RefreshLayouts(); return ToggleAPI
-            end
-            
-            function SectionAPI:AddSlider(SliderConfig)
-                SliderConfig.Name = SliderConfig.Name or "Slider"
-                SliderConfig.Min = SliderConfig.Min or 0
-                SliderConfig.Max = SliderConfig.Max or 100
-                SliderConfig.Default = math.clamp(SliderConfig.Default or SliderConfig.Min, SliderConfig.Min, SliderConfig.Max)
-                SliderConfig.Decimals = SliderConfig.Decimals or 0
-                SliderConfig.Flag = SliderConfig.Flag or tostring(math.random(100000, 999999))
-                
-                local SliderAPI = { Value = SliderConfig.Default }
-                
-                local ElementCanvas = VirtualDOM.CreateInstance("Square")
-                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, 36)
-                ElementCanvas.Transparency = 0
-                ItemContainer:AddChild(ElementCanvas)
-                
-                local SliderLabel = VirtualDOM.CreateInstance("Text")
-                SliderLabel.Text = SliderConfig.Name
-                SliderLabel.Size = 13
-                SliderLabel.Position = Vector2.new(12, 2)
-                SliderLabel.Color = Theme.TextMuted
-                SliderLabel.ZIndex = 106
-                ElementCanvas:AddChild(SliderLabel)
-                
-                local ValueDisplay = VirtualDOM.CreateInstance("Text")
-                ValueDisplay.Text = tostring(SliderAPI.Value)
-                ValueDisplay.Size = 13
-                ValueDisplay.Position = Vector2.new(ElementCanvas.Size.X - 12, 2)
-                ValueDisplay.Color = Theme.TextPrimary
-                ValueDisplay.Center = true
-                ValueDisplay.ZIndex = 106
-                ElementCanvas:AddChild(ValueDisplay)
-                
-                local RailBackground = VirtualDOM.CreateInstance("Square")
-                RailBackground.Size = Vector2.new(ElementCanvas.Size.X - 24, 10)
-                RailBackground.Position = Vector2.new(12, 20)
-                RailBackground.Color = Theme.ElementBackground
-                RailBackground.ZIndex = 106
-                ElementCanvas:AddChild(RailBackground)
-                
-                local RailOutline = VirtualDOM.CreateInstance("Square")
-                RailOutline.Size = RailBackground.Size
-                RailOutline.Position = RailBackground.Position
-                RailOutline.Color = Theme.SectionOutline
-                RailOutline.Filled = false
-                RailOutline.ZIndex = 107
-                ElementCanvas:AddChild(RailOutline)
-                
-                local ProgressPercentage = (SliderAPI.Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min)
-                local RailFill = VirtualDOM.CreateInstance("Square")
-                RailFill.Size = Vector2.new(RailBackground.Size.X * ProgressPercentage, 10)
-                RailFill.Position = RailBackground.Position
-                RailFill.Color = Theme.AccentPrimary
-                RailFill.ZIndex = 107
-                ElementCanvas:AddChild(RailFill)
-                
-                local IsSliding = false
-                local function ExecuteMath()
-                    local MaxX = RailBackground.AbsoluteSize.X
-                    local RelativeX = math.clamp(EngineState.MousePosition.X - RailBackground.AbsolutePosition.X, 0, MaxX)
-                    local Percent = RelativeX / MaxX
-                    local RawValue = SliderConfig.Min + ((SliderConfig.Max - SliderConfig.Min) * Percent)
-                    local Power = 10 ^ SliderConfig.Decimals
-                    local CleanValue = math.floor(RawValue * Power + 0.5) / Power
-                    SliderAPI.Value = CleanValue
-                    ValueDisplay.Text = tostring(CleanValue)
-                    Animator.ConstructTween(RailFill, {Size = Vector2.new(MaxX * Percent, 10)}, 0.05, "Linear", "Out")
-                    if SliderConfig.Callback then task.spawn(SliderConfig.Callback, SliderAPI.Value) end
-                end
-                
-                RailBackground.InputBegan = function() IsSliding = true; ExecuteMath() end
-                RunService.RenderStepped:Connect(function()
-                    if IsSliding then
-                        if not EngineState.IsMouseDown then IsSliding = false else ExecuteMath() end
-                    end
-                end)
-                
-                CompkillerLib.ToggledFlags[SliderConfig.Flag] = SliderAPI
-                RefreshLayouts(); return SliderAPI
-            end
-            
-            function SectionAPI:AddDropdown(DropConfig)
-                DropConfig.Name = DropConfig.Name or "Dropdown"
-                DropConfig.Values = DropConfig.Values or {"Option 1", "Option 2"}
-                DropConfig.Default = DropConfig.Default or DropConfig.Values[1]
-                DropConfig.Flag = DropConfig.Flag or tostring(math.random(100000, 999999))
-                
-                local DropAPI = { Value = DropConfig.Default, IsOpen = false }
-                
-                local ElementCanvas = VirtualDOM.CreateInstance("Square")
-                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, 42)
-                ElementCanvas.Transparency = 0
-                ItemContainer:AddChild(ElementCanvas)
-                
-                local DropLabel = VirtualDOM.CreateInstance("Text")
-                DropLabel.Text = DropConfig.Name
-                DropLabel.Size = 13
-                DropLabel.Position = Vector2.new(12, 2)
-                DropLabel.Color = Theme.TextMuted
-                DropLabel.ZIndex = 106
-                ElementCanvas:AddChild(DropLabel)
-                
-                local DropBox = VirtualDOM.CreateInstance("Square")
-                DropBox.Size = Vector2.new(ElementCanvas.Size.X - 24, 20)
-                DropBox.Position = Vector2.new(12, 18)
-                DropBox.Color = Theme.ElementBackground
-                DropBox.ZIndex = 106
-                ElementCanvas:AddChild(DropBox)
-                
-                local DropBoxOut = VirtualDOM.CreateInstance("Square")
-                DropBoxOut.Size = DropBox.Size
-                DropBoxOut.Position = DropBox.Position
-                DropBoxOut.Color = Theme.SectionOutline
-                DropBoxOut.Filled = false
-                DropBoxOut.ZIndex = 107
-                ElementCanvas:AddChild(DropBoxOut)
-                
-                local DropValueText = VirtualDOM.CreateInstance("Text")
-                DropValueText.Text = DropAPI.Value
-                DropValueText.Size = 13
-                DropValueText.Position = Vector2.new(18, 21)
-                DropValueText.Color = Theme.TextPrimary
-                DropValueText.ZIndex = 107
-                ElementCanvas:AddChild(DropValueText)
-                
-                local DropContainer = VirtualDOM.CreateInstance("Square")
-                DropContainer.Size = Vector2.new(DropBox.Size.X, 0)
-                DropContainer.Position = Vector2.new(12, 40)
-                DropContainer.Color = Theme.SectionBackground
-                DropContainer.ZIndex = 150
-                DropContainer.Visible = false
-                DropContainer.FloatingLayer = true
-                ElementCanvas:AddChild(DropContainer)
-                
-                local DropContainerOut = VirtualDOM.CreateInstance("Square")
-                DropContainerOut.Size = DropContainer.Size
-                DropContainerOut.Color = Theme.AccentPrimary
-                DropContainerOut.Filled = false
-                DropContainerOut.ZIndex = 151
-                DropContainer:AddChild(DropContainerOut)
-                
-                local function BuildDropdownList()
-                    for _, Child in ipairs(DropContainer.Children) do
-                        if Child ~= DropContainerOut then Child:Destroy() end
-                    end
-                    local CurY = 0
-                    for _, Option in ipairs(DropConfig.Values) do
-                        local OptBox = VirtualDOM.CreateInstance("Square")
-                        OptBox.Size = Vector2.new(DropContainer.Size.X, 20)
-                        OptBox.Position = Vector2.new(0, CurY)
-                        OptBox.Color = Theme.ElementBackground
-                        OptBox.ZIndex = 152
-                        DropContainer:AddChild(OptBox)
-                        
-                        local OptText = VirtualDOM.CreateInstance("Text")
-                        OptText.Text = Option
-                        OptText.Size = 13
-                        OptText.Position = Vector2.new(6, 3)
-                        OptText.Color = Option == DropAPI.Value and Theme.AccentPrimary or Theme.TextMuted
-                        OptText.ZIndex = 153
-                        OptBox:AddChild(OptText)
-                        
-                        OptBox.MouseEnter = function() OptBox.Color = Theme.ElementHover end
-                        OptBox.MouseLeave = function() OptBox.Color = Theme.ElementBackground end
-                        
-                        OptBox.InputBegan = function()
-                            DropAPI.Value = Option
-                            DropValueText.Text = Option
-                            DropAPI.IsOpen = false
-                            DropContainer.Visible = false
-                            if DropConfig.Callback then task.spawn(DropConfig.Callback, DropAPI.Value) end
-                        end
-                        CurY = CurY + 20
-                    end
-                    DropContainer.Size = Vector2.new(DropBox.Size.X, CurY)
-                    DropContainerOut.Size = DropContainer.Size
-                end
-                
-                DropBox.InputBegan = function()
-                    DropAPI.IsOpen = not DropAPI.IsOpen
-                    if DropAPI.IsOpen then
-                        BuildDropdownList()
-                        DropContainer.Visible = true
-                    else
-                        DropContainer.Visible = false
-                    end
-                end
-                
-                CompkillerLib.ToggledFlags[DropConfig.Flag] = DropAPI
-                RefreshLayouts(); return DropAPI
-            end
-            
-            function SectionAPI:AddColorPicker(ColorConfig)
-                ColorConfig.Name = ColorConfig.Name or "Color Picker"
-                ColorConfig.Default = ColorConfig.Default or Color3.fromRGB(255, 255, 255)
-                ColorConfig.Flag = ColorConfig.Flag or tostring(math.random(100000, 999999))
-                
-                local ColorAPI = { Value = ColorConfig.Default, IsOpen = false }
-                
-                local ElementCanvas = VirtualDOM.CreateInstance("Square")
-                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, 20)
-                ElementCanvas.Transparency = 0
-                ItemContainer:AddChild(ElementCanvas)
-                
-                local ColorLabel = VirtualDOM.CreateInstance("Text")
-                ColorLabel.Text = ColorConfig.Name
-                ColorLabel.Size = 13
-                ColorLabel.Position = Vector2.new(12, 3)
-                ColorLabel.Color = Theme.TextMuted
-                ColorLabel.ZIndex = 106
-                ElementCanvas:AddChild(ColorLabel)
-                
-                local DisplayBox = VirtualDOM.CreateInstance("Square")
-                DisplayBox.Size = Vector2.new(24, 12)
-                DisplayBox.Position = Vector2.new(ElementCanvas.Size.X - 36, 4)
-                DisplayBox.Color = ColorAPI.Value
-                DisplayBox.ZIndex = 106
-                ElementCanvas:AddChild(DisplayBox)
-                
-                local DisplayOut = VirtualDOM.CreateInstance("Square")
-                DisplayOut.Size = DisplayBox.Size
-                DisplayOut.Position = DisplayBox.Position
-                DisplayOut.Color = Theme.SectionOutline
-                DisplayOut.Filled = false
-                DisplayOut.ZIndex = 107
-                ElementCanvas:AddChild(DisplayOut)
-                
-                local PickerWindow = VirtualDOM.CreateInstance("Square")
-                PickerWindow.Size = Vector2.new(160, 160)
-                PickerWindow.Position = Vector2.new(ElementCanvas.Size.X - 170, 20)
-                PickerWindow.Color = Theme.SectionBackground
-                PickerWindow.ZIndex = 200
-                PickerWindow.Visible = false
-                PickerWindow.FloatingLayer = true
-                ElementCanvas:AddChild(PickerWindow)
-                
-                local PickerOut = VirtualDOM.CreateInstance("Square")
-                PickerOut.Size = PickerWindow.Size
-                PickerOut.Color = Theme.SectionOutline
-                PickerOut.Filled = false
-                PickerOut.ZIndex = 201
-                PickerWindow:AddChild(PickerOut)
-                
-                local SatValBox = VirtualDOM.CreateInstance("Square")
-                SatValBox.Size = Vector2.new(130, 140)
-                SatValBox.Position = Vector2.new(10, 10)
-                local h, s, v = MathLib.RGBToHSV(ColorAPI.Value)
-                SatValBox.Color = MathLib.HSVToRGB(h, 1, 1)
-                SatValBox.ZIndex = 202
-                PickerWindow:AddChild(SatValBox)
-                
-                local HueBar = VirtualDOM.CreateInstance("Square")
-                HueBar.Size = Vector2.new(10, 140)
-                HueBar.Position = Vector2.new(145, 10)
-                HueBar.Color = Color3.fromRGB(255, 0, 0)
-                HueBar.ZIndex = 202
-                PickerWindow:AddChild(HueBar)
-                
-                local HueCursor = VirtualDOM.CreateInstance("Square")
-                HueCursor.Size = Vector2.new(12, 2)
-                HueCursor.Position = Vector2.new(144, 10 + (140 * (1 - h)))
-                HueCursor.Color = Color3.fromRGB(255, 255, 255)
-                HueCursor.ZIndex = 203
-                PickerWindow:AddChild(HueCursor)
-                
-                local SVDot = VirtualDOM.CreateInstance("Square")
-                SVDot.Size = Vector2.new(4, 4)
-                SVDot.Position = Vector2.new(10 + (130 * s), 10 + (140 * (1 - v)))
-                SVDot.Color = Color3.fromRGB(255, 255, 255)
-                SVDot.ZIndex = 203
-                PickerWindow:AddChild(SVDot)
-                
-                local HoldingHue, HoldingSV = false, false
-                
-                local function UpdateColor()
-                    ColorAPI.Value = MathLib.HSVToRGB(h, s, v)
-                    DisplayBox.Color = ColorAPI.Value
-                    SatValBox.Color = MathLib.HSVToRGB(h, 1, 1)
-                    if ColorConfig.Callback then task.spawn(ColorConfig.Callback, ColorAPI.Value) end
-                end
-                
-                HueBar.InputBegan = function() HoldingHue = true end
-                SatValBox.InputBegan = function() HoldingSV = true end
-                
-                RunService.RenderStepped:Connect(function()
-                    if HoldingHue then
-                        if not EngineState.IsMouseDown then HoldingHue = false return end
-                        local relY = math.clamp(EngineState.MousePosition.Y - HueBar.AbsolutePosition.Y, 0, HueBar.AbsoluteSize.Y)
-                        h = 1 - (relY / HueBar.AbsoluteSize.Y)
-                        HueCursor.Position = Vector2.new(144, 10 + relY - 1)
-                        UpdateColor()
-                    end
-                    if HoldingSV then
-                        if not EngineState.IsMouseDown then HoldingSV = false return end
-                        local relX = math.clamp(EngineState.MousePosition.X - SatValBox.AbsolutePosition.X, 0, SatValBox.AbsoluteSize.X)
-                        local relY = math.clamp(EngineState.MousePosition.Y - SatValBox.AbsolutePosition.Y, 0, SatValBox.AbsoluteSize.Y)
-                        s = relX / SatValBox.AbsoluteSize.X
-                        v = 1 - (relY / SatValBox.AbsoluteSize.Y)
-                        SVDot.Position = Vector2.new(10 + relX - 2, 10 + relY - 2)
-                        UpdateColor()
-                    end
-                end)
-                
-                DisplayBox.InputBegan = function()
-                    ColorAPI.IsOpen = not ColorAPI.IsOpen
-                    PickerWindow.Visible = ColorAPI.IsOpen
-                end
-                
-                CompkillerLib.ToggledFlags[ColorConfig.Flag] = ColorAPI
-                RefreshLayouts(); return ColorAPI
-            end
-            
-            function SectionAPI:AddButton(BtnConfig)
-                BtnConfig.Name = BtnConfig.Name or "Button"
-                
-                local ElementCanvas = VirtualDOM.CreateInstance("Square")
-                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, 26)
-                ElementCanvas.Transparency = 0
-                ItemContainer:AddChild(ElementCanvas)
-                
-                local BtnBody = VirtualDOM.CreateInstance("Square")
-                BtnBody.Size = Vector2.new(ElementCanvas.Size.X - 24, 20)
-                BtnBody.Position = Vector2.new(12, 3)
-                BtnBody.Color = Theme.ElementBackground
-                BtnBody.ZIndex = 106
-                ElementCanvas:AddChild(BtnBody)
-                
-                local BtnOut = VirtualDOM.CreateInstance("Square")
-                BtnOut.Size = BtnBody.Size
-                BtnOut.Position = BtnBody.Position
-                BtnOut.Color = Theme.SectionOutline
-                BtnOut.Filled = false
-                BtnOut.ZIndex = 107
-                ElementCanvas:AddChild(BtnOut)
-                
-                local BtnLabel = VirtualDOM.CreateInstance("Text")
-                BtnLabel.Text = BtnConfig.Name
-                BtnLabel.Size = 13
-                BtnLabel.Position = Vector2.new(ElementCanvas.Size.X / 2, 6)
-                BtnLabel.Color = Theme.TextPrimary
-                BtnLabel.Center = true
-                BtnLabel.ZIndex = 107
-                ElementCanvas:AddChild(BtnLabel)
-                
-                BtnBody.MouseEnter = function() Animator.ConstructTween(BtnBody, {Color = Theme.ElementHover}, 0.2, "Quad", "Out") end
-                BtnBody.MouseLeave = function() Animator.ConstructTween(BtnBody, {Color = Theme.ElementBackground}, 0.2, "Quad", "Out") end
-                BtnBody.InputBegan = function()
-                    Animator.ConstructTween(BtnBody, {Color = Theme.AccentPrimary}, 0.1, "Quad", "Out", function()
-                        Animator.ConstructTween(BtnBody, {Color = Theme.ElementHover}, 0.2, "Quad", "Out")
-                    end)
-                    if BtnConfig.Callback then task.spawn(BtnConfig.Callback) end
-                end
-                
-                RefreshLayouts()
-            end
-            
-            function SectionAPI:AddKeybind(KeyConfig)
-                KeyConfig.Name = KeyConfig.Name or "Keybind"
-                KeyConfig.Default = KeyConfig.Default or Enum.KeyCode.Unknown
-                KeyConfig.Flag = KeyConfig.Flag or tostring(math.random(100000, 999999))
-                
-                local KeyAPI = { Value = KeyConfig.Default, IsBinding = false }
-                
-                local ElementCanvas = VirtualDOM.CreateInstance("Square")
-                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, 20)
-                ElementCanvas.Transparency = 0
-                ItemContainer:AddChild(ElementCanvas)
-                
-                local KeyLabel = VirtualDOM.CreateInstance("Text")
-                KeyLabel.Text = KeyConfig.Name
-                KeyLabel.Size = 13
-                KeyLabel.Position = Vector2.new(12, 3)
-                KeyLabel.Color = Theme.TextMuted
-                KeyLabel.ZIndex = 106
-                ElementCanvas:AddChild(KeyLabel)
-                
-                local BindBox = VirtualDOM.CreateInstance("Square")
-                BindBox.Size = Vector2.new(50, 16)
-                BindBox.Position = Vector2.new(ElementCanvas.Size.X - 62, 2)
-                BindBox.Color = Theme.ElementBackground
-                BindBox.ZIndex = 106
-                ElementCanvas:AddChild(BindBox)
-                
-                local BindOut = VirtualDOM.CreateInstance("Square")
-                BindOut.Size = BindBox.Size
-                BindOut.Position = BindBox.Position
-                BindOut.Color = Theme.SectionOutline
-                BindOut.Filled = false
-                BindOut.ZIndex = 107
-                ElementCanvas:AddChild(BindOut)
-                
-                local BindText = VirtualDOM.CreateInstance("Text")
-                BindText.Text = KeyAPI.Value == Enum.KeyCode.Unknown and "None" or KeyAPI.Value.Name
-                BindText.Size = 12
-                BindText.Position = Vector2.new(ElementCanvas.Size.X - 37, 3)
-                BindText.Color = Theme.TextPrimary
-                BindText.Center = true
-                BindText.ZIndex = 107
-                ElementCanvas:AddChild(BindText)
-                
-                BindBox.InputBegan = function()
-                    if KeyAPI.IsBinding then return end
-                    KeyAPI.IsBinding = true
-                    BindText.Text = "..."
+                local InputBeganHook = function()
+                    local CurrentValue = ToggleAPI.Value
+                    local NewValue = not CurrentValue
+                    ToggleAPI.Value = NewValue
                     
-                    local BindConn
-                    BindConn = UserInputService.InputBegan:Connect(function(Input)
-                        if Input.UserInputType == Enum.UserInputType.Keyboard then
-                            if Input.KeyCode == Enum.KeyCode.Escape then
-                                KeyAPI.Value = Enum.KeyCode.Unknown
-                                BindText.Text = "None"
-                            else
-                                KeyAPI.Value = Input.KeyCode
-                                BindText.Text = Input.KeyCode.Name
-                            end
-                            KeyAPI.IsBinding = false
-                            BindConn:Disconnect()
-                            if KeyConfig.Callback then task.spawn(KeyConfig.Callback, KeyAPI.Value) end
-                        elseif Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.MouseButton2 then
-                            KeyAPI.Value = Input.UserInputType
-                            BindText.Text = Input.UserInputType.Name
-                            KeyAPI.IsBinding = false
-                            BindConn:Disconnect()
-                            if KeyConfig.Callback then task.spawn(KeyConfig.Callback, KeyAPI.Value) end
-                        end
-                    end)
-                end
-                
-                CompkillerLib.ToggledFlags[KeyConfig.Flag] = KeyAPI
-                RefreshLayouts(); return KeyAPI
-            end
-            
-            function SectionAPI:AddTextBox(TextConfig)
-                TextConfig.Name = TextConfig.Name or "TextBox"
-                TextConfig.Default = TextConfig.Default or ""
-                TextConfig.Flag = TextConfig.Flag or tostring(math.random(100000, 999999))
-                
-                local TextAPI = { Value = TextConfig.Default }
-                
-                local ElementCanvas = VirtualDOM.CreateInstance("Square")
-                ElementCanvas.Size = Vector2.new(ItemContainer.Size.X, 40)
-                ElementCanvas.Transparency = 0
-                ItemContainer:AddChild(ElementCanvas)
-                
-                local TextLabel = VirtualDOM.CreateInstance("Text")
-                TextLabel.Text = TextConfig.Name
-                TextLabel.Size = 13
-                TextLabel.Position = Vector2.new(12, 2)
-                TextLabel.Color = Theme.TextMuted
-                TextLabel.ZIndex = 106
-                ElementCanvas:AddChild(TextLabel)
-                
-                local InputBox = VirtualDOM.CreateInstance("Square")
-                InputBox.Size = Vector2.new(ElementCanvas.Size.X - 24, 20)
-                InputBox.Position = Vector2.new(12, 18)
-                InputBox.Color = Theme.ElementBackground
-                InputBox.ZIndex = 106
-                ElementCanvas:AddChild(InputBox)
-                
-                local InputOut = VirtualDOM.CreateInstance("Square")
-                InputOut.Size = InputBox.Size
-                InputOut.Position = InputBox.Position
-                InputOut.Color = Theme.SectionOutline
-                InputOut.Filled = false
-                InputOut.ZIndex = 107
-                ElementCanvas:AddChild(InputOut)
-                
-                local InputText = VirtualDOM.CreateInstance("Text")
-                InputText.Text = TextAPI.Value == "" and "Enter text..." or TextAPI.Value
-                InputText.Size = 13
-                InputText.Position = Vector2.new(18, 21)
-                InputText.Color = TextAPI.Value == "" and Theme.TextDisabled or Theme.TextPrimary
-                InputText.ZIndex = 107
-                ElementCanvas:AddChild(InputText)
-                
-                InputBox.InputBegan = function()
-                    if EngineState.TypingActive then return end
-                    EngineState.TypingActive = true
-                    EngineState.TypingElement = InputBox
-                    InputOut.Color = Theme.AccentPrimary
-                    InputText.Text = TextAPI.Value .. "|"
-                    InputText.Color = Theme.TextPrimary
+                    local TargetTrans = 0
+                    if NewValue == true then
+                        TargetTrans = 1
+                    end
+                    local FillProps = {Transparency = TargetTrans}
+                    Animator.ConstructTween(CheckboxFill, FillProps, 0.2, "Quint", "Out")
                     
-                    local TypeConn
-                    TypeConn = UserInputService.InputBegan:Connect(function(Input)
-                        if Input.KeyCode == Enum.KeyCode.Return or Input.KeyCode == Enum.KeyCode.Escape then
-                            EngineState.TypingActive = false
-                            EngineState.TypingElement = nil
-                            InputOut.Color = Theme.SectionOutline
-                            InputText.Text = TextAPI.Value == "" and "Enter text..." or TextAPI.Value
-                            InputText.Color = TextAPI.Value == "" and Theme.TextDisabled or Theme.TextPrimary
-                            TypeConn:Disconnect()
-                            if TextConfig.Callback then task.spawn(TextConfig.Callback, TextAPI.Value) end
-                        elseif Input.KeyCode == Enum.KeyCode.Backspace then
-                            TextAPI.Value = string.sub(TextAPI.Value, 1, -2)
-                            InputText.Text = TextAPI.Value .. "|"
-                        elseif Input.UserInputType == Enum.UserInputType.Keyboard then
-                            local char = UserInputService:GetStringForKeyCode(Input.KeyCode)
-                            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
-                                char = string.upper(char)
-                            else
-                                char = string.lower(char)
-                            end
-                            if char:match("[%w%p%s]") and #char == 1 then
-                                TextAPI.Value = TextAPI.Value .. char
-                                InputText.Text = TextAPI.Value .. "|"
-                            end
-                        end
-                    end)
+                    local TargetOutCol = ThemeConfig.SectionOutline
+                    if NewValue == true then
+                        TargetOutCol = ThemeConfig.AccentPrimary
+                    end
+                    local OutProps = {Color = TargetOutCol}
+                    Animator.ConstructTween(CheckboxOut, OutProps, 0.2, "Quint", "Out")
+                    
+                    local TargetLabelCol = ThemeConfig.TextMuted
+                    if NewValue == true then
+                        TargetLabelCol = ThemeConfig.TextPrimary
+                    end
+                    local LabelProps = {Color = TargetLabelCol}
+                    Animator.ConstructTween(ToggleLabel, LabelProps, 0.2, "Quint", "Out")
+                    
+                    local CallbackFunc = ToggleConfig.Callback
+                    if CallbackFunc ~= nil then
+                        task.spawn(CallbackFunc, NewValue)
+                    end
                 end
+                ElementCanvas.InputBegan = InputBeganHook
                 
-                CompkillerLib.ToggledFlags[TextConfig.Flag] = TextAPI
-                RefreshLayouts(); return TextAPI
+                CompkillerLib.ToggledFlags[ToggleFlag] = ToggleAPI
+                RefreshLayoutsFunction()
+                
+                return ToggleAPI
             end
             
             return SectionAPI
         end
         return TabAPI
     end
-    
-    function WindowAPI:SaveConfig(Name)
-        local Cfg = {}
-        for flag, api in pairs(CompkillerLib.ToggledFlags) do
-            if typeof(api.Value) == "Color3" then
-                Cfg[flag] = {R = api.Value.R, G = api.Value.G, B = api.Value.B, Type = "Color3"}
-            elseif typeof(api.Value) == "EnumItem" then
-                Cfg[flag] = {Name = api.Value.Name, Type = "Enum"}
-            else
-                Cfg[flag] = {Value = api.Value, Type = "Value"}
-            end
-        end
-        local Json = HttpService:JSONEncode(Cfg)
-        if writefile then
-            writefile(Name .. ".json", Json)
-            CompkillerLib:Notify("Configuration", "Saved config: " .. Name .. ".json", 3)
-        else
-            print("Writefile missing. JSON:", Json)
-        end
-    end
-
-    function WindowAPI:LoadConfig(Name)
-        if readfile and isfile and isfile(Name .. ".json") then
-            local Json = readfile(Name .. ".json")
-            local Cfg = HttpService:JSONDecode(Json)
-            for flag, data in pairs(Cfg) do
-                if CompkillerLib.ToggledFlags[flag] then
-                    local api = CompkillerLib.ToggledFlags[flag]
-                    if data.Type == "Color3" then
-                        api.Value = Color3.new(data.R, data.G, data.B)
-                    elseif data.Type == "Enum" then
-                        -- Enum assignment requires finding the enum, handled via lookup
-                    elseif data.Type == "Value" then
-                        api.Value = data.Value
-                    end
-                end
-            end
-            CompkillerLib:Notify("Configuration", "Loaded config: " .. Name .. ".json", 3)
-        end
-    end
-    
     return WindowAPI
 end
 
