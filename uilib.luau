@@ -359,12 +359,12 @@ local Compkiller = {
 	Version = '2.6',
 	Logo = "rbxassetid://120245531583106",
 	Windows = {},
-     Compkiller.Scale = {
+	Scale = {
     Window = UDim2.new(0, 700, 0, 565),
     Mobile = UDim2.new(0, 600, 0, 375),
     TabOpen = 185,
     TabClose = 85,
-},
+	},
 	PerformanceMode = false,
 	WindowsNil = {},
 	NilFolder = Instance.new('Folder'),
