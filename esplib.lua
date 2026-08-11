@@ -93,10 +93,10 @@ function esp.rotatevector2(v2, r)
 end
 
 function esp:fadeviadistance(data)
-    if not data.limit then return 1 end
+    if not data.limit then return 0 end
     local dist = (data.cframe.p - camera.CFrame.p).Magnitude
     local fadeStart = data.maxdistance - data.factor
-    return 1 - math.clamp((dist - fadeStart) / data.factor, 0, 1)
+    return math.clamp((dist - fadeStart) / data.factor, 0, 1)
 end
 
 -- FIX 4: WorldToViewportPoint returns (Vector3, bool, number)
