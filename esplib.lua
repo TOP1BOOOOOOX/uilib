@@ -140,7 +140,51 @@ function esp:raycast(a, b, c)
 end
 
 function esp.getcharacter(plr)
-    return plr.Character
+    local char = plr.Character
+    if not char then return nil end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local head = char:FindFirstChild("Head")
+    -- Try to find the limb parts; some characters might not have them.
+    local ra = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm")
+    local la = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftUpperArm")
+    local rl = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightUpperLeg")
+    local ll = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftUpperLeg")
+    if not (hrp and head) then return char end
+
+    local aliases = {}
+    -- Provide fake positions based on the HumanoidRootPart if a limb is missing.
+    if ra then
+        aliases.RightHand = { Position = ra.Position + ra.CFrame.RightVector * (ra.Size.X / 2 + 0.2), Size = ra.Size }
+    else
+        aliases.RightHand = { Position = hrp.Position + Vector3.new(1, 0, 0), Size = Vector3.new(0, 0, 0) }
+    end
+    if la then
+        aliases.LeftHand = { Position = la.Position - la.CFrame.RightVector * (la.Size.X / 2 + 0.2), Size = la.Size }
+    else
+        aliases.LeftHand = { Position = hrp.Position - Vector3.new(1, 0, 0), Size = Vector3.new(0, 0, 0) }
+    end
+    if rl then
+        aliases.RightFoot = { Position = rl.Position - rl.CFrame.UpVector * (rl.Size.Y / 2 + 0.2), Size = rl.Size }
+    else
+        aliases.RightFoot = { Position = hrp.Position - Vector3.new(0, 2, 0), Size = Vector3.new(0, 0, 0) }
+    end
+    if ll then
+        aliases.LeftFoot = { Position = ll.Position - ll.CFrame.UpVector * (ll.Size.Y / 2 + 0.2), Size = ll.Size }
+    else
+        aliases.LeftFoot = { Position = hrp.Position - Vector3.new(0, 2, 0), Size = Vector3.new(0, 0, 0) }
+    end
+
+    local tool = char:FindFirstChildOfClass("Tool")
+    if tool then
+        aliases.EquippedTool = { Value = tool.Name }
+    end
+
+    aliases.FindFirstChild = function(_, name)
+        if aliases[name] ~= nil then return aliases[name] end
+        return char:FindFirstChild(name)
+    end
+
+    return setmetatable(aliases, { __index = char })
 end
 
 function esp.checkalive(plr)
