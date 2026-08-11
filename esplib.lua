@@ -143,7 +143,6 @@ function esp.getcharacter(plr)
     local char = plr.Character
     if not char then return nil end
 
-    -- Real parts or dummy references
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local head = char:FindFirstChild("Head")
     local ra = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm")
@@ -151,19 +150,17 @@ function esp.getcharacter(plr)
     local rl = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightUpperLeg")
     local ll = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftUpperLeg")
 
-    -- Fallback dummy part (prevents nil errors anywhere)
     local dummyPart = {
         Position = Vector3.zero,
         CFrame = CFrame.new(),
         Size = Vector3.new(1, 1, 1)
     }
 
-    -- Guarantee HRP and Head exist (even if only a dummy)
     hrp = hrp or dummyPart
     head = head or dummyPart
 
     local aliases = {}
-    local function getLimb(part, sign, axis)
+    local function getLimb(part, sign)
         if part then
             return {
                 Position = part.Position + sign * part.CFrame.RightVector * (part.Size.X / 2 + 0.2),
@@ -179,8 +176,8 @@ function esp.getcharacter(plr)
 
     aliases.RightHand = getLimb(ra, 1)
     aliases.LeftHand = getLimb(la, -1)
-    aliases.RightFoot = getLimb(rl, 1, true)
-    aliases.LeftFoot = getLimb(ll, -1, true)
+    aliases.RightFoot = getLimb(rl, 1)
+    aliases.LeftFoot = getLimb(ll, -1)
 
     local tool = char:FindFirstChildOfClass("Tool")
     if tool then
@@ -197,11 +194,15 @@ end
 
 function esp.checkalive(plr)
     if not plr then plr = localPlayer end
-    local pass = false
-    if (plr.Character and plr.Character:FindFirstChild('Humanoid') and plr.Character:FindFirstChild('Head') and plr.Character:FindFirstChild('HumanoidRootPart') and plr.Character.Humanoid.Health > 0) then
-        pass = true
+    -- FIX: removed Torso/UpperTorso requirement that was skipping custom rig players
+    if plr.Character
+        and plr.Character:FindFirstChild('Humanoid')
+        and plr.Character:FindFirstChild('HumanoidRootPart')
+        and plr.Character.Humanoid.Health > 0
+    then
+        return true
     end
-    return pass
+    return false
 end
 
 function esp.checkteam(plr, bool)
@@ -216,20 +217,31 @@ function esp:checkvisible(instance, origin, params)
 end
 
 function esp:check(plr)
-	if plr == players.LocalPlayer then return false; end;
-	local pass = true;
-	local character = self.getcharacter(plr);
-	if not self.checkalive(plr) then
-		pass = false;
-	elseif esp.limitdistance and (character.PrimaryPart.CFrame.p - workspace.CurrentCamera.CFrame.p).magnitude > esp.maxdistance then
-		pass = false;
-	elseif esp.teamcheck and not self.checkteam(plr, false) then
-		pass = false;
-    elseif esp.visiblecheck and not self:checkvisible(character, character.Head, esp.visiblecheckparams) then
+    if plr == players.LocalPlayer then return false end
+    local pass = true
+    local character = self.getcharacter(plr)
+    if not self.checkalive(plr) then
         pass = false
-	end;
-	return pass;
-end;
+    else
+        -- FIX: safe PrimaryPart fallback so distance check never errors
+        local primaryPart = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
+        if esp.limitdistance and primaryPart then
+            if (primaryPart.CFrame.p - workspace.CurrentCamera.CFrame.p).magnitude > esp.maxdistance then
+                pass = false
+            end
+        end
+        if pass and esp.teamcheck and not self.checkteam(plr, false) then
+            pass = false
+        end
+        if pass and esp.visiblecheck then
+            local head = character:FindFirstChild("Head")
+            if head and not self:checkvisible(character, head, esp.visiblecheckparams) then
+                pass = false
+            end
+        end
+    end
+    return pass
+end
 
 function esp:returnoffsets(x, y, minY, z)
     return {
@@ -241,8 +253,8 @@ function esp:returnoffsets(x, y, minY, z)
         NEWCF(-x, -minY, z),
         NEWCF(x, -minY, -z),
         NEWCF(-x, -minY, -z)
-    };
-end;
+    }
+end
 
 function esp:returntriangleoffsets(triangle)
     local minX = MIN(triangle.PointA.X, triangle.PointB.X, triangle.PointC.X)
@@ -253,22 +265,23 @@ function esp:returntriangleoffsets(triangle)
 end
 
 function esp:convertnumrange(val, oldmin, oldmax, newmin, newmax)
-    return (val - oldmin) * (newmax - newmin) / (oldmax - oldmin) + newmin;
-end;
+    return (val - oldmin) * (newmax - newmin) / (oldmax - oldmin) + newmin
+end
 
 function esp:fadeviadistance(data)
-    return data.limit and 1 - CLAMP(self:convertnumrange(FLOOR(((data.cframe.p - camera.CFrame.p)).magnitude), (data.maxdistance - data.factor), data.maxdistance, 0, 1), 0, 1) or 1;
-end;
+    return data.limit and 1 - CLAMP(self:convertnumrange(FLOOR(((data.cframe.p - camera.CFrame.p)).magnitude), (data.maxdistance - data.factor), data.maxdistance, 0, 1), 0, 1) or 1
+end
 
 function esp:floorvector(vector)
-    return NEWVEC2(FLOOR(vector.X),FLOOR(vector.Y))
+    return NEWVEC2(FLOOR(vector.X), FLOOR(vector.Y))
 end
+
 function esp:rotatevector2(v2, r)
-	local c = COS(r);
-	local s = SIN(r);
-	return NEWVEC2(c * v2.X - s * v2.Y, s * v2.X + c * v2.Y);
-end;
---
+    local c = COS(r)
+    local s = SIN(r)
+    return NEWVEC2(c * v2.X - s * v2.Y, s * v2.X + c * v2.Y)
+end
+
 function esp:add(plr)
     if plr == localPlayer then return end
     local objs = {
@@ -283,7 +296,7 @@ function esp:add(plr)
         arrow_kevlarbar_outline = esp:draw('Square', { Filled = true, Thickness = 1 }),
         arrow_kevlarbar_inline = esp:draw('Square', { Filled = true, Thickness = 1, Color = NEWCOLOR3(0.3, 0.3, 0.3) }),
         arrow_kevlarbar = esp:draw('Square', { Filled = true, Thickness = 1, Color = NEWCOLOR3(1,1,1) }),
-        arrow = esp:draw('Triangle', { Filled = true, Thickness = 1, });
+        arrow = esp:draw('Triangle', { Filled = true, Thickness = 1 }),
         -- bars
         bar_outline = esp:draw('Square', { Filled = true, Thickness = 1 }),
         bar_inline = esp:draw('Square', { Filled = true, Thickness = 1, Color = NEWCOLOR3(0.3, 0.3, 0.3) }),
@@ -305,8 +318,9 @@ function esp:add(plr)
     objs['chams'] = chams
     self.players[plr.Name] = objs
 end
+
 function esp:disable(plr)
-    local objects = self.players[plr.Name];
+    local objects = self.players[plr.Name]
     if objects then
         for i, v in next, objects do
             if i == 'chams' then
@@ -314,19 +328,20 @@ function esp:disable(plr)
             else
                 v.Visible = false
             end
-        end;
-    end;
-end;
+        end
+    end
+end
+
 function esp:remove(plr)
-    local objects = self.players[plr.Name];
+    local objects = self.players[plr.Name]
     if objects then
         for i, v in next, objects do
             v:Remove()
-        end;
-    end;
-    self.players[plr.Name] = nil;
-end;
--- connections
+        end
+    end
+    self.players[plr.Name] = nil
+end
+
 function esp:connect(a, callback)
     local c = a:Connect(callback)
     TINSERT(self.connections, c)
@@ -351,21 +366,56 @@ end
 
 function esp:update()
     for plr, drawing in next, esp.players do
-        local player = players:FindFirstChild(plr)
-        if not player then esp.players[plr] = nil continue end
-        if esp.enabled and esp.checkalive(player) then
+        -- FIX: wrap each player iteration in pcall so one bad player
+        -- can't error-out and freeze the ESP for everyone else
+        local ok, err = pcall(function()
+            local player = players:FindFirstChild(plr)
+            if not player then esp.players[plr] = nil return end
+
+            if not (esp.enabled and esp.checkalive(player)) then
+                esp:disable(player)
+                return
+            end
+
             local character = esp.getcharacter(player)
+            if not character then esp:disable(player) return end
+
+            -- FIX: safe PrimaryPart fallback — this was the main crash
+            -- causing all ESP to freeze when any player had a nil PrimaryPart
+            local primaryPart = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
+            if not primaryPart then esp:disable(player) return end
+
             local playerName = LEN(plr) > esp.maxchar and esp.shortnames and SUB(plr, 0, esp.maxchar) .. '..' or plr
             local pass = esp:check(player)
-            local distance = tostring(FLOOR((character.PrimaryPart.CFrame.p - camera.CFrame.p).Magnitude  / 3))  .. 'm'
-            local _, onScreen = camera:WorldToViewportPoint(character['HumanoidRootPart'].Position)
-            local centerMassPos = character['HumanoidRootPart'].CFrame
+            local distance = tostring(FLOOR((primaryPart.CFrame.p - camera.CFrame.p).Magnitude / 3)) .. 'm'
+
+            -- FIX: guard HumanoidRootPart access — camera:WorldToViewportPoint
+            -- on a nil HRP was causing stuck drawings when camera faced away
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            if not hrp then esp:disable(player) return end
+
+            -- FIX: use the actual Z depth from WorldToViewportPoint to detect
+            -- behind-camera. When Z < 0 the player is behind us — disable and skip.
+            local viewportPos = camera:WorldToViewportPoint(hrp.Position)
+            local onScreen = viewportPos.Z > 0 and (
+                viewportPos.X >= 0 and viewportPos.X <= camera.ViewportSize.X and
+                viewportPos.Y >= 0 and viewportPos.Y <= camera.ViewportSize.Y
+            )
+
+            -- Behind camera: force full disable and skip this player entirely
+            if viewportPos.Z <= 0 then
+                esp:disable(player)
+                return
+            end
+
+            local centerMassPos = hrp.CFrame
             local transparency = esp:fadeviadistance({
                 limit = esp.limitdistance,
                 cframe = centerMassPos,
                 maxdistance = esp.maxdistance,
                 factor = esp.fadefactor
             })
+
             local kevlar = 0
             if player:FindFirstChild('Kevlar') then
                 kevlar = player.Kevlar.Value
@@ -376,7 +426,6 @@ function esp:update()
             if esp.checkteam(player, false) then
                 flag = 'enemy_'
             end
-
             if TFIND(esp.priority_players, player) then
                 flag = 'priority_'
             end
@@ -385,31 +434,34 @@ function esp:update()
                 esp:disable(player)
             end
 
-            -- arrows
-            drawing.arrow.Visible = esp[ flag .. 'arrow'][1] and pass;
+            -- FIX: arrow was re-enabling itself after esp:disable by not
+            -- accounting for onScreen. Now arrows only show when off-screen
+            -- (their intended purpose) and player still passes checks.
+            drawing.arrow.Visible = esp[flag .. 'arrow'][1] and pass and not onScreen
             if drawing.arrow.Visible then
-                local proj = camera.CFrame:PointToObjectSpace(centerMassPos.p);
-                local ang = ATAN2(proj.Z, proj.X);
-                local dir = NEWVEC2(COS(ang), SIN(ang));
-                local a = (dir * esp.arrowradius * .5) + camera.ViewportSize / 2;
-                local b, c = a - esp:rotatevector2(dir, RAD(30)) * esp.arrowsize, a - esp:rotatevector2(dir, (-RAD(30))) * esp.arrowsize;
-                drawing.arrow.PointA = a;
-                drawing.arrow.PointB = b;
-                drawing.arrow.PointC = c;
-                drawing.arrow.Color = esp[ flag .. 'arrow'][2];
-                drawing.arrow.Transparency = not onScreen and esp[ flag .. 'arrow'][3] or 0;
+                local proj = camera.CFrame:PointToObjectSpace(centerMassPos.p)
+                local ang = ATAN2(proj.Z, proj.X)
+                local dir = NEWVEC2(COS(ang), SIN(ang))
+                local a = (dir * esp.arrowradius * .5) + camera.ViewportSize / 2
+                local b, c = a - esp:rotatevector2(dir, RAD(30)) * esp.arrowsize, a - esp:rotatevector2(dir, (-RAD(30))) * esp.arrowsize
+                drawing.arrow.PointA = a
+                drawing.arrow.PointB = b
+                drawing.arrow.PointC = c
+                drawing.arrow.Color = esp[flag .. 'arrow'][2]
+                drawing.arrow.Transparency = esp[flag .. 'arrow'][3]
+
                 if esp.arrowinfo then
                     local smallestX, smallestY, biggestX, biggestY = esp:returntriangleoffsets(drawing.arrow)
-                    -- healthbar
-                    drawing.arrow_bar.Visible = not onScreen and drawing.arrow.Visible and esp[ flag .. 'healthbar'][1]
+
+                    drawing.arrow_bar.Visible = esp[flag .. 'healthbar'][1]
                     drawing.arrow_bar_inline.Visible = drawing.arrow_bar.Visible
                     drawing.arrow_bar_outline.Visible = esp.outlines and drawing.arrow_bar.Visible
                     if drawing.arrow_bar.Visible then
-                        drawing.arrow_bar.Color = esp[ flag .. 'healthbar'][3]:Lerp(esp[ flag .. 'healthbar'][2], health / 100)
-                        drawing.arrow_bar.Size = esp:floorvector(NEWVEC2(1, ( - health / 100 * ( biggestY - smallestY + 2)) + 3))
+                        drawing.arrow_bar.Color = esp[flag .. 'healthbar'][3]:Lerp(esp[flag .. 'healthbar'][2], health / 100)
+                        drawing.arrow_bar.Size = esp:floorvector(NEWVEC2(1, (-health / 100 * (biggestY - smallestY + 2)) + 3))
                         drawing.arrow_bar.Position = esp:floorvector(NEWVEC2(smallestX - 3, smallestY + drawing.arrow_bar_outline.Size.Y))
                         drawing.arrow_bar.Transparency = transparency
-                        drawing.arrow_bar_inline.Size = esp:floorvector(NEWVEC2(1, ( - 1 * ( biggestY - smallestY + 2)) + 3))
+                        drawing.arrow_bar_inline.Size = esp:floorvector(NEWVEC2(1, (-1 * (biggestY - smallestY + 2)) + 3))
                         drawing.arrow_bar_inline.Position = drawing.arrow_bar.Position
                         drawing.arrow_bar_inline.Transparency = transparency
                         drawing.arrow_bar_outline.Size = esp:floorvector(NEWVEC2(1, biggestY - smallestY))
@@ -417,13 +469,12 @@ function esp:update()
                         drawing.arrow_bar_outline.Transparency = transparency
                     end
 
-                    -- kevlarbar
-                    drawing.arrow_kevlarbar.Visible = not onScreen and drawing.arrow.Visible and esp[ flag .. 'kevlarbar'][1]
+                    drawing.arrow_kevlarbar.Visible = esp[flag .. 'kevlarbar'][1]
                     drawing.arrow_kevlarbar_inline.Visible = drawing.arrow_kevlarbar.Visible
                     drawing.arrow_kevlarbar_outline.Visible = esp.outlines and drawing.arrow_kevlarbar.Visible
                     if drawing.arrow_kevlarbar.Visible then
-                        drawing.arrow_kevlarbar.Color = esp[ flag .. 'kevlarbar'][3]:Lerp(esp[ flag .. 'kevlarbar'][2], kevlar / 100)
-                        drawing.arrow_kevlarbar.Size = esp:floorvector(NEWVEC2(( kevlar / 100 * ( biggestX - smallestX)), 1))
+                        drawing.arrow_kevlarbar.Color = esp[flag .. 'kevlarbar'][3]:Lerp(esp[flag .. 'kevlarbar'][2], kevlar / 100)
+                        drawing.arrow_kevlarbar.Size = esp:floorvector(NEWVEC2((kevlar / 100 * (biggestX - smallestX)), 1))
                         drawing.arrow_kevlarbar.Position = esp:floorvector(NEWVEC2(smallestX, biggestY + 2))
                         drawing.arrow_kevlarbar.Transparency = transparency
                         drawing.arrow_kevlarbar_inline.Size = esp:floorvector(NEWVEC2((biggestX - smallestX), 1))
@@ -434,39 +485,38 @@ function esp:update()
                         drawing.arrow_kevlarbar_outline.Transparency = transparency
                     end
 
-                    -- name
-                    drawing.arrow_name.Visible = not onScreen and drawing.arrow.Visible and esp[ flag .. 'names'][1]
+                    drawing.arrow_name.Visible = esp[flag .. 'names'][1]
                     drawing.arrow_name_outline.Visible = esp.outlines and drawing.arrow_name.Visible
                     if drawing.arrow_name.Visible then
-                        drawing.arrow_name.Text = esp[ flag .. 'distance'] and '['..distance..'] '.. playerName or playerName
+                        drawing.arrow_name.Text = esp[flag .. 'distance'] and '[' .. distance .. '] ' .. playerName or playerName
                         drawing.arrow_name.Font = Drawing.Fonts[esp.font]
                         drawing.arrow_name.Size = esp.textsize
-                        drawing.arrow_name.Color = esp[ flag .. 'names'][2]
+                        drawing.arrow_name.Color = esp[flag .. 'names'][2]
                         drawing.arrow_name.Position = esp:floorvector(NEWVEC2(smallestX + (biggestX - smallestX) / 2 - (drawing.arrow_name.TextBounds.X / 2), smallestY - drawing.arrow_name.TextBounds.Y - 2))
                         drawing.arrow_name.Transparency = transparency
                         drawing.arrow_name_outline.Text = drawing.arrow_name.Text
                         drawing.arrow_name_outline.Font = drawing.arrow_name.Font
                         drawing.arrow_name_outline.Size = drawing.arrow_name.Size
-                        drawing.arrow_name_outline.Position = drawing.arrow_name.Position + NEWVEC2(1,1)
+                        drawing.arrow_name_outline.Position = drawing.arrow_name.Position + NEWVEC2(1, 1)
                         drawing.arrow_name_outline.Transparency = transparency
                     end
                 end
-            end;
+            end
 
             -- chams
-            drawing.chams.ins.Enabled = esp[ flag .. 'chams'][1] and pass
-            drawing.chams.ins.Adornee = esp[ flag .. 'chams'][1] and player.Character or nil
+            drawing.chams.ins.Enabled = esp[flag .. 'chams'][1] and pass
+            drawing.chams.ins.Adornee = esp[flag .. 'chams'][1] and player.Character or nil
             drawing.chams.ins.Parent = folder
             if drawing.chams.ins.Enabled then
-                drawing.chams.ins.FillColor = esp[ flag .. 'chams'][2]
-                drawing.chams.ins.OutlineColor = esp[ flag .. 'chams'][3]
-                drawing.chams.ins.FillTransparency = esp[ flag .. 'chams'][4]
-                drawing.chams.ins.OutlineTransparency = esp[ flag .. 'chams'][5]
-                drawing.chams.ins.DepthMode = esp[ flag .. 'chams'][6] and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
-            end;
+                drawing.chams.ins.FillColor = esp[flag .. 'chams'][2]
+                drawing.chams.ins.OutlineColor = esp[flag .. 'chams'][3]
+                drawing.chams.ins.FillTransparency = esp[flag .. 'chams'][4]
+                drawing.chams.ins.OutlineTransparency = esp[flag .. 'chams'][5]
+                drawing.chams.ins.DepthMode = esp[flag .. 'chams'][6] and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
+            end
 
-            if not pass or (not onScreen) then
-                continue
+            if not pass or not onScreen then
+                return
             end
 
             local smallestX, biggestX = math.huge, -math.huge
@@ -481,7 +531,7 @@ function esp:update()
             local minY = minY1 > minY2 and minY1 or minY2
             local minX = x1 < x2 and x1 or x2
 
-            local offsets = esp:returnoffsets(minX, y, minY, character['HumanoidRootPart'].Size.Z / 2)
+            local offsets = esp:returnoffsets(minX, y, minY, hrp.Size.Z / 2)
 
             for i, v in next, offsets do
                 local pos = camera:WorldToViewportPoint(centerMassPos * v.p)
@@ -492,35 +542,33 @@ function esp:update()
             end
 
             -- box
-            drawing.box.Visible = esp[ flag .. 'boxes'][1]
+            drawing.box.Visible = esp[flag .. 'boxes'][1]
             drawing.box_fill.Visible = drawing.box.Visible
             drawing.box_outline.Visible = esp.outlines and drawing.box.Visible
             if drawing.box.Visible then
-                drawing.box.Color = esp[ flag .. 'boxes'][2]
+                drawing.box.Color = esp[flag .. 'boxes'][2]
                 drawing.box.Size = esp:floorvector(NEWVEC2(biggestX - smallestX, biggestY - smallestY))
                 drawing.box.Position = esp:floorvector(NEWVEC2(smallestX, smallestY))
                 drawing.box.Transparency = transparency
-                --
                 drawing.box_fill.Size = drawing.box.Size
                 drawing.box_fill.Position = drawing.box.Position
-                drawing.box_fill.Color = esp[ flag .. 'boxes'][3]
-                drawing.box_fill.Transparency = MIN(esp[ flag .. 'boxes'][4], transparency)
-                --
+                drawing.box_fill.Color = esp[flag .. 'boxes'][3]
+                drawing.box_fill.Transparency = MIN(esp[flag .. 'boxes'][4], transparency)
                 drawing.box_outline.Size = drawing.box.Size
-                drawing.box_outline.Position = drawing.box.Position + NEWVEC2(1,1)
+                drawing.box_outline.Position = drawing.box.Position + NEWVEC2(1, 1)
                 drawing.box_outline.Transparency = transparency
             end
 
             -- healthbar
-            drawing.bar.Visible = esp[ flag .. 'healthbar'][1]
+            drawing.bar.Visible = esp[flag .. 'healthbar'][1]
             drawing.bar_inline.Visible = drawing.bar.Visible
             drawing.bar_outline.Visible = esp.outlines and drawing.bar.Visible
             if drawing.bar.Visible then
-                drawing.bar.Color = esp[ flag .. 'healthbar'][3]:Lerp(esp[ flag .. 'healthbar'][2], health / 100)
-                drawing.bar.Size = esp:floorvector(NEWVEC2(1, ( - health / 100 * ( biggestY - smallestY + 2)) + 3))
+                drawing.bar.Color = esp[flag .. 'healthbar'][3]:Lerp(esp[flag .. 'healthbar'][2], health / 100)
+                drawing.bar.Size = esp:floorvector(NEWVEC2(1, (-health / 100 * (biggestY - smallestY + 2)) + 3))
                 drawing.bar.Position = esp:floorvector(NEWVEC2(smallestX - 3, smallestY + drawing.bar_outline.Size.Y))
                 drawing.bar.Transparency = transparency
-                drawing.bar_inline.Size = esp:floorvector(NEWVEC2(1, ( - 1 * ( biggestY - smallestY + 2)) + 3))
+                drawing.bar_inline.Size = esp:floorvector(NEWVEC2(1, (-1 * (biggestY - smallestY + 2)) + 3))
                 drawing.bar_inline.Position = drawing.bar.Position
                 drawing.bar_inline.Transparency = transparency
                 drawing.bar_outline.Size = esp:floorvector(NEWVEC2(1, biggestY - smallestY))
@@ -529,15 +577,15 @@ function esp:update()
             end
 
             -- kevlarbar
-            drawing.kevlarbar.Visible = esp[ flag .. 'kevlarbar'][1]
+            drawing.kevlarbar.Visible = esp[flag .. 'kevlarbar'][1]
             drawing.kevlarbar_inline.Visible = drawing.kevlarbar.Visible
             drawing.kevlarbar_outline.Visible = esp.outlines and drawing.kevlarbar.Visible
             if drawing.kevlarbar.Visible then
-                drawing.kevlarbar.Color = esp[ flag .. 'kevlarbar'][3]:Lerp(esp[ flag .. 'kevlarbar'][2], kevlar / 100)
-                drawing.kevlarbar.Size = esp:floorvector(NEWVEC2(( kevlar / 100 * ( biggestX - smallestX)), 1))
+                drawing.kevlarbar.Color = esp[flag .. 'kevlarbar'][3]:Lerp(esp[flag .. 'kevlarbar'][2], kevlar / 100)
+                drawing.kevlarbar.Size = esp:floorvector(NEWVEC2((kevlar / 100 * (biggestX - smallestX)), 1))
                 drawing.kevlarbar.Position = esp:floorvector(NEWVEC2(smallestX, biggestY + 2))
                 drawing.kevlarbar.Transparency = transparency
-                drawing.kevlarbar_inline.Size = esp:floorvector(NEWVEC2(( 1 * ( biggestX - smallestX)), 1))
+                drawing.kevlarbar_inline.Size = esp:floorvector(NEWVEC2((1 * (biggestX - smallestX)), 1))
                 drawing.kevlarbar_inline.Position = drawing.kevlarbar.Position
                 drawing.kevlarbar_inline.Transparency = transparency
                 drawing.kevlarbar_outline.Size = esp:floorvector(NEWVEC2(biggestX - smallestX, 1))
@@ -546,75 +594,81 @@ function esp:update()
             end
 
             -- distance
-            drawing.distance.Visible = not esp[ flag .. 'names'][1] and esp[ flag .. 'distance']
+            drawing.distance.Visible = not esp[flag .. 'names'][1] and esp[flag .. 'distance']
             drawing.distance_outline.Visible = esp.outlines and drawing.distance.Visible
             if drawing.distance.Visible then
-                drawing.distance.Text = '['..distance..']'
+                drawing.distance.Text = '[' .. distance .. ']'
                 drawing.distance.Font = Drawing.Fonts[esp.font]
                 drawing.distance.Size = esp.textsize
-                drawing.distance.Color = esp[ flag .. 'names'][2]
+                drawing.distance.Color = esp[flag .. 'names'][2]
                 drawing.distance.Position = esp:floorvector(NEWVEC2(smallestX + (biggestX - smallestX) / 2 - (drawing.distance.TextBounds.X / 2), smallestY - drawing.distance.TextBounds.Y - 2))
                 drawing.distance.Transparency = transparency
                 drawing.distance_outline.Text = drawing.distance.Text
                 drawing.distance_outline.Font = drawing.distance.Font
                 drawing.distance_outline.Size = drawing.distance.Size
-                drawing.distance_outline.Position = drawing.distance.Position + NEWVEC2(1,1)
+                drawing.distance_outline.Position = drawing.distance.Position + NEWVEC2(1, 1)
                 drawing.distance_outline.Transparency = transparency
             end
 
             -- name
-            drawing.name.Visible = esp[ flag .. 'names'][1]
+            drawing.name.Visible = esp[flag .. 'names'][1]
             drawing.name_outline.Visible = esp.outlines and drawing.name.Visible
             if drawing.name.Visible then
-                drawing.name.Text = esp[ flag .. 'distance'] and '['..distance..'] '..playerName or playerName
+                drawing.name.Text = esp[flag .. 'distance'] and '[' .. distance .. '] ' .. playerName or playerName
                 drawing.name.Font = Drawing.Fonts[esp.font]
                 drawing.name.Size = esp.textsize
-                drawing.name.Color = esp[ flag .. 'names'][2]
+                drawing.name.Color = esp[flag .. 'names'][2]
                 drawing.name.Position = esp:floorvector(NEWVEC2(smallestX + (biggestX - smallestX) / 2 - (drawing.name.TextBounds.X / 2), smallestY - drawing.name.TextBounds.Y - 2))
                 drawing.name.Transparency = transparency
                 drawing.name_outline.Text = drawing.name.Text
                 drawing.name_outline.Font = drawing.name.Font
                 drawing.name_outline.Size = drawing.name.Size
-                drawing.name_outline.Position = drawing.name.Position + NEWVEC2(1,1)
+                drawing.name_outline.Position = drawing.name.Position + NEWVEC2(1, 1)
                 drawing.name_outline.Transparency = transparency
             end
 
             -- health
-            drawing.health.Visible = health ~= 100 and health ~= 0  and esp[flag .. 'health']
+            drawing.health.Visible = health ~= 100 and health ~= 0 and esp[flag .. 'health']
             if drawing.health.Visible then
                 drawing.health.Text = tostring(health)
                 drawing.health.Font = Drawing.Fonts[esp.font]
                 drawing.health.Size = esp.textsize
                 drawing.health.Outline = esp.outlines
-                drawing.health.Color = esp[ flag .. 'healthbar'][3]:Lerp(esp[ flag .. 'healthbar'][2], health / 100)
+                drawing.health.Color = esp[flag .. 'healthbar'][3]:Lerp(esp[flag .. 'healthbar'][2], health / 100)
                 drawing.health.Position = esp:floorvector(NEWVEC2(smallestX - 3, drawing.bar.Position.Y + drawing.bar.Size.Y - drawing.health.TextBounds.Y + 5))
                 drawing.health.Transparency = transparency
             end
 
             -- weapon
-            -- weapon
-drawing.weapon.Visible = esp[ flag .. 'weapon'][1]
-drawing.weapon_outline.Visible = esp.outlines and drawing.weapon.Visible
-if drawing.weapon.Visible then
-    local toolName = "None"
-    local tool = character:FindFirstChildOfClass("Tool")
-    if tool then
-    toolName = LOWER(tool.Name) or "None"
-    end
-    drawing.weapon.Text = toolName
-    drawing.weapon.Font = Drawing.Fonts[esp.font]
-    drawing.weapon.Size = esp.textsize
-    drawing.weapon.Color = esp[ flag .. 'weapon'][2]
-    drawing.weapon.Position = esp:floorvector(NEWVEC2(smallestX + (biggestX - smallestX) / 2 - (drawing.weapon.TextBounds.X / 2), biggestY + 4))
-    drawing.weapon.Transparency = transparency
-    drawing.weapon_outline.Text = drawing.weapon.Text
-    drawing.weapon_outline.Font = drawing.weapon.Font
-    drawing.weapon_outline.Size = drawing.weapon.Size
-    drawing.weapon_outline.Position = drawing.weapon.Position + NEWVEC2(1,1)
-    drawing.weapon_outline.Transparency = transparency
-end
-        else
-            esp:disable(player)
+            drawing.weapon.Visible = esp[flag .. 'weapon'][1]
+            drawing.weapon_outline.Visible = esp.outlines and drawing.weapon.Visible
+            if drawing.weapon.Visible then
+                local toolName = "None"
+                local tool = character:FindFirstChildOfClass("Tool")
+                if tool then
+                    toolName = LOWER(tool.Name) or "None"
+                end
+                drawing.weapon.Text = toolName
+                drawing.weapon.Font = Drawing.Fonts[esp.font]
+                drawing.weapon.Size = esp.textsize
+                drawing.weapon.Color = esp[flag .. 'weapon'][2]
+                drawing.weapon.Position = esp:floorvector(NEWVEC2(smallestX + (biggestX - smallestX) / 2 - (drawing.weapon.TextBounds.X / 2), biggestY + 4))
+                drawing.weapon.Transparency = transparency
+                drawing.weapon_outline.Text = drawing.weapon.Text
+                drawing.weapon_outline.Font = drawing.weapon.Font
+                drawing.weapon_outline.Size = drawing.weapon.Size
+                drawing.weapon_outline.Position = drawing.weapon.Position + NEWVEC2(1, 1)
+                drawing.weapon_outline.Transparency = transparency
+            end
+        end)
+
+        -- if a player's update errors, silently disable their drawings
+        -- so they don't get stuck on screen
+        if not ok then
+            local player = players:FindFirstChild(plr)
+            if player then
+                pcall(function() esp:disable(player) end)
+            end
         end
     end
 end
