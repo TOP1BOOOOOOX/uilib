@@ -146,7 +146,7 @@ end
 function esp.checkalive(plr)
     if not plr then plr = localPlayer end
     local pass = false
-    if (plr.Character and plr.Character:FindFirstChild('Humanoid') and plr.Character:FindFirstChild('Head') and plr.Character:FindFirstChild('LeftUpperArm') and plr.Character.Humanoid.Health > 0 and plr.Character.LeftUpperArm.Transparency == 0) then
+    if (plr.Character and plr.Character:FindFirstChild('Humanoid') and plr.Character:FindFirstChild('Head') and plr.Character:FindFirstChild('HumanoidRootPart') and plr.Character.Humanoid.Health > 0) then
         pass = true
     end
     return pass
@@ -545,9 +545,9 @@ drawing.weapon.Visible = esp[ flag .. 'weapon'][1]
 drawing.weapon_outline.Visible = esp.outlines and drawing.weapon.Visible
 if drawing.weapon.Visible then
     local toolName = "None"
-    local equipped = character:FindFirstChild("EquippedTool")
-    if equipped then
-        toolName = LOWER(equipped.Value) or "None"
+    local tool = character:FindFirstChildOfClass("Tool")
+    if tool then
+    toolName = LOWER(tool.Name) or "None"
     end
     drawing.weapon.Text = toolName
     drawing.weapon.Font = Drawing.Fonts[esp.font]
