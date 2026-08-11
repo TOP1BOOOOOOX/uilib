@@ -1,4 +1,3 @@
---// ESP Library – Works even with non‑standard rigs & cameras
 local runService = game:GetService('RunService')
 local coregui = game:GetService('CoreGui')
 local players = game:GetService('Players')
@@ -18,9 +17,8 @@ local esp = {
     arrowradius = 500,
     arrowsize = 20,
     arrowinfo = false,
-    alwaysShowBoxes = true,   -- show 2D ESP even when off‑screen (clamped to screen edges)
+    alwaysShowBoxes = true,   -- show 2D ESP even when off‑screen
 
-    -- Default settings (all off)
     team_chams = { false, Color3.new(1,1,1), Color3.new(1,1,1), .25, .75, true },
     team_boxes = { false, Color3.new(), Color3.new(), 0.95 },
     team_healthbar = { false, Color3.new(), Color3.new() },
@@ -58,21 +56,19 @@ local esp = {
     connections = {}
 }
 
---// Utility locals
+--// Local shortcuts
 local NEWVEC2, NEWCF, NEWCOLOR3 = Vector2.new, CFrame.new, Color3.new
 local MIN, MAX, FLOOR = math.min, math.max, math.floor
 local ATAN2, SIN, COS, RAD = math.atan2, math.sin, math.cos, math.rad
 local LEN, LOWER, SUB = string.len, string.lower, string.sub
 local TINSERT, TFIND = table.insert, table.find
 
---// Helper to create Drawing objects
 function esp:draw(className, props)
     local obj = Drawing.new(className)
     for k, v in next, props or {} do obj[k] = v end
     return obj
 end
 
---// Helper to create Instance objects (for Highlights)
 function esp:create(className, props)
     local obj = Instance.new(className)
     for k, v in next, props or {} do obj[k] = v end
@@ -81,7 +77,6 @@ end
 
 local folder = esp:create('Folder', { Parent = coregui })
 
---// Basic checks
 function esp.getcharacter(plr) return plr.Character end
 
 function esp.checkalive(plr)
@@ -91,6 +86,172 @@ end
 
 function esp.checkteam(plr)
     return plr.Team ~= localPlayer.Team
+end
+
+function esp:rotatevector2(v2, r)
+    local c = COS(r); local s = SIN(r)
+    return NEWVEC2(c * v2.X - s * v2.Y, s * v2.X + c * v2.Y)
+end
+
+function esp:fadeviadistance(data)
+    if not data.limit then return 1 end
+    local dist = (data.cframe.p - camera.CFrame.p).Magnitude
+    local fadeStart = data.maxdistance - data.factor
+    return 1 - math.clamp((dist - fadeStart) / data.factor, 0, 1)
+end
+
+--// 2D drawing helper (now defined BEFORE update)
+local function drawBoxes(plr, smallestX, smallestY, biggestX, biggestY)
+    local drawing = esp.players[plr]
+    if not drawing then return end
+    local player = players:FindFirstChild(plr)
+    if not player then return end
+    local character = esp.getcharacter(player)
+    if not character or not character:FindFirstChild('HumanoidRootPart') then return end
+
+    local centerMassPos = character.HumanoidRootPart.CFrame
+    local distance = FLOOR((centerMassPos.p - camera.CFrame.p).Magnitude / 3) .. 'm'
+    local health = FLOOR(character.Humanoid.Health)
+    local kevlar = (player:FindFirstChild('Kevlar') and player.Kevlar.Value) or 0
+    local transparency = esp:fadeviadistance({
+        limit = esp.limitdistance,
+        cframe = centerMassPos,
+        maxdistance = esp.maxdistance,
+        factor = esp.fadefactor
+    })
+
+    local flag = 'team_'
+    if esp.checkteam(player) then flag = 'enemy_' end
+    if TFIND(esp.priority_players, player) then flag = 'priority_' end
+
+    local playerName = LEN(plr) > esp.maxchar and esp.shortnames and SUB(plr, 0, esp.maxchar) .. '..' or plr
+    local boxW, boxH = biggestX - smallestX, biggestY - smallestY
+
+    -- Box
+    drawing.box.Visible = esp[flag .. 'boxes'][1]
+    drawing.box_fill.Visible = drawing.box.Visible
+    drawing.box_outline.Visible = esp.outlines and drawing.box.Visible
+    if drawing.box.Visible then
+        drawing.box.Size = NEWVEC2(FLOOR(boxW), FLOOR(boxH))
+        drawing.box.Position = NEWVEC2(FLOOR(smallestX), FLOOR(smallestY))
+        drawing.box.Color = esp[flag .. 'boxes'][2]
+        drawing.box.Transparency = transparency
+        drawing.box_fill.Size = drawing.box.Size
+        drawing.box_fill.Position = drawing.box.Position
+        drawing.box_fill.Color = esp[flag .. 'boxes'][3]
+        drawing.box_fill.Transparency = MIN(esp[flag .. 'boxes'][4], transparency)
+        drawing.box_outline.Size = drawing.box.Size
+        drawing.box_outline.Position = drawing.box.Position + NEWVEC2(1,1)
+        drawing.box_outline.Transparency = transparency
+    end
+
+    -- Health bar
+    drawing.bar.Visible = esp[flag .. 'healthbar'][1]
+    drawing.bar_inline.Visible = drawing.bar.Visible
+    drawing.bar_outline.Visible = esp.outlines and drawing.bar.Visible
+    if drawing.bar.Visible then
+        local healthRatio = health / 100
+        drawing.bar.Color = esp[flag .. 'healthbar'][3]:Lerp(esp[flag .. 'healthbar'][2], healthRatio)
+        drawing.bar.Size = NEWVEC2(1, FLOOR(-healthRatio * (boxH + 2)) + 3)
+        drawing.bar.Position = NEWVEC2(FLOOR(smallestX - 3), FLOOR(smallestY + boxH))
+        drawing.bar.Transparency = transparency
+        drawing.bar_inline.Size = NEWVEC2(1, FLOOR(-1 * (boxH + 2)) + 3)
+        drawing.bar_inline.Position = drawing.bar.Position
+        drawing.bar_inline.Transparency = transparency
+        drawing.bar_outline.Size = NEWVEC2(1, FLOOR(boxH))
+        drawing.bar_outline.Position = NEWVEC2(FLOOR(smallestX - 2), FLOOR(smallestY + 1))
+        drawing.bar_outline.Transparency = transparency
+    end
+
+    -- Kevlar bar
+    drawing.kevlarbar.Visible = esp[flag .. 'kevlarbar'][1]
+    drawing.kevlarbar_inline.Visible = drawing.kevlarbar.Visible
+    drawing.kevlarbar_outline.Visible = esp.outlines and drawing.kevlarbar.Visible
+    if drawing.kevlarbar.Visible then
+        local kevlarRatio = kevlar / 100
+        drawing.kevlarbar.Color = esp[flag .. 'kevlarbar'][3]:Lerp(esp[flag .. 'kevlarbar'][2], kevlarRatio)
+        drawing.kevlarbar.Size = NEWVEC2(FLOOR(kevlarRatio * boxW), 1)
+        drawing.kevlarbar.Position = NEWVEC2(FLOOR(smallestX), FLOOR(biggestY + 2))
+        drawing.kevlarbar.Transparency = transparency
+        drawing.kevlarbar_inline.Size = NEWVEC2(FLOOR(boxW), 1)
+        drawing.kevlarbar_inline.Position = drawing.kevlarbar.Position
+        drawing.kevlarbar_inline.Transparency = transparency
+        drawing.kevlarbar_outline.Size = NEWVEC2(FLOOR(boxW), 1)
+        drawing.kevlarbar_outline.Position = NEWVEC2(FLOOR(smallestX + 1), FLOOR(biggestY + 3))
+        drawing.kevlarbar_outline.Transparency = transparency
+    end
+
+    -- Name / Distance text
+    local showName = esp[flag .. 'names'][1]
+    local showDist = esp[flag .. 'distance']
+    drawing.name.Visible = showName
+    drawing.name_outline.Visible = esp.outlines and showName
+    drawing.distance.Visible = not showName and showDist
+    drawing.distance_outline.Visible = esp.outlines and drawing.distance.Visible
+
+    local topText = showName and (showDist and '['..distance..'] '..playerName or playerName) or nil
+    local distText = drawing.distance.Visible and '['..distance..']' or nil
+
+    if topText then
+        drawing.name.Text = topText
+        drawing.name.Font = Drawing.Fonts[esp.font]
+        drawing.name.Size = esp.textsize
+        drawing.name.Color = esp[flag .. 'names'][2]
+        local tb = drawing.name.TextBounds
+        drawing.name.Position = NEWVEC2(FLOOR(smallestX + boxW/2 - tb.X/2), FLOOR(smallestY - tb.Y - 2))
+        drawing.name.Transparency = transparency
+        drawing.name_outline.Text = topText
+        drawing.name_outline.Font = drawing.name.Font
+        drawing.name_outline.Size = drawing.name.Size
+        drawing.name_outline.Position = drawing.name.Position + NEWVEC2(1,1)
+        drawing.name_outline.Transparency = transparency
+    elseif distText then
+        drawing.distance.Text = distText
+        drawing.distance.Font = Drawing.Fonts[esp.font]
+        drawing.distance.Size = esp.textsize
+        drawing.distance.Color = esp[flag .. 'names'][2]
+        local tb = drawing.distance.TextBounds
+        drawing.distance.Position = NEWVEC2(FLOOR(smallestX + boxW/2 - tb.X/2), FLOOR(smallestY - tb.Y - 2))
+        drawing.distance.Transparency = transparency
+        drawing.distance_outline.Text = distText
+        drawing.distance_outline.Font = drawing.distance.Font
+        drawing.distance_outline.Size = drawing.distance.Size
+        drawing.distance_outline.Position = drawing.distance.Position + NEWVEC2(1,1)
+        drawing.distance_outline.Transparency = transparency
+    end
+
+    -- Health number
+    drawing.health.Visible = health ~= 100 and health ~= 0 and esp[flag .. 'health']
+    if drawing.health.Visible then
+        drawing.health.Text = tostring(health)
+        drawing.health.Font = Drawing.Fonts[esp.font]
+        drawing.health.Size = esp.textsize
+        drawing.health.Outline = esp.outlines
+        drawing.health.Color = esp[flag .. 'healthbar'][3]:Lerp(esp[flag .. 'healthbar'][2], health/100)
+        drawing.health.Position = NEWVEC2(FLOOR(smallestX - 3), FLOOR(drawing.bar.Position.Y + drawing.bar.Size.Y - drawing.health.TextBounds.Y + 5))
+        drawing.health.Transparency = transparency
+    end
+
+    -- Weapon (safe)
+    drawing.weapon.Visible = esp[flag .. 'weapon'][1]
+    drawing.weapon_outline.Visible = esp.outlines and drawing.weapon.Visible
+    if drawing.weapon.Visible then
+        local toolName = "None"
+        local equipped = character:FindFirstChild("EquippedTool")
+        if equipped then toolName = LOWER(equipped.Value) or "None" end
+        drawing.weapon.Text = toolName
+        drawing.weapon.Font = Drawing.Fonts[esp.font]
+        drawing.weapon.Size = esp.textsize
+        drawing.weapon.Color = esp[flag .. 'weapon'][2]
+        local tb = drawing.weapon.TextBounds
+        drawing.weapon.Position = NEWVEC2(FLOOR(smallestX + boxW/2 - tb.X/2), FLOOR(biggestY + 4))
+        drawing.weapon.Transparency = transparency
+        drawing.weapon_outline.Text = toolName
+        drawing.weapon_outline.Font = drawing.weapon.Font
+        drawing.weapon_outline.Size = drawing.weapon.Size
+        drawing.weapon_outline.Position = drawing.weapon.Position + NEWVEC2(1,1)
+        drawing.weapon_outline.Transparency = transparency
+    end
 end
 
 --// Main update loop
@@ -104,7 +265,6 @@ function esp:update()
         end
 
         if not self.enabled or not self.checkalive(player) then
-            -- disable everything
             for i, v in next, drawing do
                 if i == 'chams' then v.ins.Enabled = false else v.Visible = false end
             end
@@ -123,22 +283,21 @@ function esp:update()
 
         local root = character.HumanoidRootPart
         local centerMassPos = root.CFrame
-        local distance = FLOOR((centerMassPos.p - camera.CFrame.p).Magnitude / 3)
+        local distance = FLOOR((centerMassPos.p - camera.CFrame.p).Magnitude / 3) .. 'm'
         local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
 
-        -- Determine flag (team_ / enemy_ / priority_)
         local flag = self.checkteam(player) and 'enemy_' or 'team_'
         if TFIND(self.priority_players, player) then flag = 'priority_' end
 
-        print(string.format("[ESP] %s | pass=%s onScreen=%s dist=%dm flag=%s",
+        print(string.format("[ESP] %s | pass=%s onScreen=%s dist=%s flag=%s",
             name, tostring(pass), tostring(onScreen), distance, flag))
 
-        -- Disable everything first, then re-enable what should show
+        -- Disable everything first
         for i, v in next, drawing do
             if i == 'chams' then v.ins.Enabled = false else v.Visible = false end
         end
 
-        -- Chams (always show if pass)
+        -- Chams (always if pass)
         drawing.chams.ins.Enabled = self[flag .. 'chams'][1] and pass
         drawing.chams.ins.Adornee = drawing.chams.ins.Enabled and character or nil
         drawing.chams.ins.Parent = folder
@@ -151,7 +310,7 @@ function esp:update()
             drawing.chams.ins.DepthMode = cfg[6] and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
         end
 
-        -- Arrows (show when pass, even off-screen)
+        -- Arrow (off‑screen indicator)
         drawing.arrow.Visible = self[flag .. 'arrow'][1] and pass
         if drawing.arrow.Visible then
             local proj = camera.CFrame:PointToObjectSpace(centerMassPos.p)
@@ -165,11 +324,11 @@ function esp:update()
             drawing.arrow.Transparency = not onScreen and self[flag .. 'arrow'][3] or 0
         end
 
-        -- 2D ESP (boxes, names, health) – show if pass AND (onScreen OR alwaysShowBoxes)
+        -- 2D ESP (boxes, names) – show if pass AND (onScreen or alwaysShowBoxes)
         local show2D = pass and (onScreen or self.alwaysShowBoxes)
         if not show2D then continue end
 
-        -- Box calculation (safe fallback for missing limbs)
+        -- Safe box calculation
         local head = character:FindFirstChild('Head')
         local rightHand = character:FindFirstChild('RightHand') or character:FindFirstChild('RightUpperArm')
         local leftHand  = character:FindFirstChild('LeftHand')  or character:FindFirstChild('LeftUpperArm')
@@ -185,7 +344,7 @@ function esp:update()
                             (centerMassPos.p - leftFoot.Position).magnitude)
             minX = math.min(x1, x2)
         else
-            -- fallback: simple cube based on head position
+            -- fallback for incomplete rig
             local headPos = head and head.Position or (centerMassPos.p + Vector3.new(0,2,0))
             y = (centerMassPos.p - headPos).magnitude + (head and head.Size.Y/2 or 1)
             minY = y * 1.5
@@ -208,7 +367,7 @@ function esp:update()
             biggestY = MAX(biggestY, pos.Y)
         end
 
-        -- If alwaysShowBoxes and off-screen, clamp to screen edges
+        -- Clamp to screen if off‑screen but alwaysShowBoxes is on
         if not onScreen and self.alwaysShowBoxes then
             local vs = camera.ViewportSize
             smallestX = math.clamp(smallestX, 0, vs.X)
@@ -217,162 +376,10 @@ function esp:update()
             biggestY = math.clamp(biggestY, 0, vs.Y)
         end
 
-        local boxW, boxH = biggestX - smallestX, biggestY - smallestY
-        if boxW <= 0 or boxH <= 0 then continue end
+        if biggestX - smallestX <= 0 or biggestY - smallestY <= 0 then continue end
 
-        -- Transparency based on distance
-        local transparency = self:fadeviadistance({
-            limit = self.limitdistance,
-            cframe = centerMassPos,
-            maxdistance = self.maxdistance,
-            factor = self.fadefactor
-        })
-
-        local health = FLOOR(character.Humanoid.Health)
-        local kevlar = (player:FindFirstChild('Kevlar') and player.Kevlar.Value) or 0
-        local playerName = LEN(name) > self.maxchar and self.shortnames and SUB(name, 0, self.maxchar) .. '..' or name
-
-        -- Apply all 2D drawings
-        -- Box
-        drawing.box.Visible = self[flag .. 'boxes'][1]
-        drawing.box_fill.Visible = drawing.box.Visible
-        drawing.box_outline.Visible = self.outlines and drawing.box.Visible
-        if drawing.box.Visible then
-            drawing.box.Size = NEWVEC2(FLOOR(boxW), FLOOR(boxH))
-            drawing.box.Position = NEWVEC2(FLOOR(smallestX), FLOOR(smallestY))
-            drawing.box.Color = self[flag .. 'boxes'][2]
-            drawing.box.Transparency = transparency
-            drawing.box_fill.Size = drawing.box.Size
-            drawing.box_fill.Position = drawing.box.Position
-            drawing.box_fill.Color = self[flag .. 'boxes'][3]
-            drawing.box_fill.Transparency = MIN(self[flag .. 'boxes'][4], transparency)
-            drawing.box_outline.Size = drawing.box.Size
-            drawing.box_outline.Position = drawing.box.Position + NEWVEC2(1,1)
-            drawing.box_outline.Transparency = transparency
-        end
-
-        -- Health bar
-        drawing.bar.Visible = self[flag .. 'healthbar'][1]
-        drawing.bar_inline.Visible = drawing.bar.Visible
-        drawing.bar_outline.Visible = self.outlines and drawing.bar.Visible
-        if drawing.bar.Visible then
-            local healthRatio = health / 100
-            drawing.bar.Color = self[flag .. 'healthbar'][3]:Lerp(self[flag .. 'healthbar'][2], healthRatio)
-            drawing.bar.Size = NEWVEC2(1, FLOOR(-healthRatio * (boxH + 2)) + 3)
-            drawing.bar.Position = NEWVEC2(FLOOR(smallestX - 3), FLOOR(smallestY + boxH))
-            drawing.bar.Transparency = transparency
-            drawing.bar_inline.Size = NEWVEC2(1, FLOOR(-1 * (boxH + 2)) + 3)
-            drawing.bar_inline.Position = drawing.bar.Position
-            drawing.bar_inline.Transparency = transparency
-            drawing.bar_outline.Size = NEWVEC2(1, FLOOR(boxH))
-            drawing.bar_outline.Position = NEWVEC2(FLOOR(smallestX - 2), FLOOR(smallestY + 1))
-            drawing.bar_outline.Transparency = transparency
-        end
-
-        -- Kevlar bar
-        drawing.kevlarbar.Visible = self[flag .. 'kevlarbar'][1]
-        drawing.kevlarbar_inline.Visible = drawing.kevlarbar.Visible
-        drawing.kevlarbar_outline.Visible = self.outlines and drawing.kevlarbar.Visible
-        if drawing.kevlarbar.Visible then
-            local kevlarRatio = kevlar / 100
-            drawing.kevlarbar.Color = self[flag .. 'kevlarbar'][3]:Lerp(self[flag .. 'kevlarbar'][2], kevlarRatio)
-            drawing.kevlarbar.Size = NEWVEC2(FLOOR(kevlarRatio * boxW), 1)
-            drawing.kevlarbar.Position = NEWVEC2(FLOOR(smallestX), FLOOR(biggestY + 2))
-            drawing.kevlarbar.Transparency = transparency
-            drawing.kevlarbar_inline.Size = NEWVEC2(FLOOR(boxW), 1)
-            drawing.kevlarbar_inline.Position = drawing.kevlarbar.Position
-            drawing.kevlarbar_inline.Transparency = transparency
-            drawing.kevlarbar_outline.Size = NEWVEC2(FLOOR(boxW), 1)
-            drawing.kevlarbar_outline.Position = NEWVEC2(FLOOR(smallestX + 1), FLOOR(biggestY + 3))
-            drawing.kevlarbar_outline.Transparency = transparency
-        end
-
-        -- Name / distance text
-        local showName = self[flag .. 'names'][1]
-        local showDist = self[flag .. 'distance']
-        drawing.name.Visible = showName
-        drawing.name_outline.Visible = self.outlines and showName
-        drawing.distance.Visible = not showName and showDist
-        drawing.distance_outline.Visible = self.outlines and drawing.distance.Visible
-
-        local topText = showName and (showDist and '['..distance..'m] '..playerName or playerName) or nil
-        local distText = drawing.distance.Visible and '['..distance..'m]' or nil
-
-        if topText then
-            drawing.name.Text = topText
-            drawing.name.Font = Drawing.Fonts[self.font]
-            drawing.name.Size = self.textsize
-            drawing.name.Color = self[flag .. 'names'][2]
-            local tb = drawing.name.TextBounds
-            drawing.name.Position = NEWVEC2(FLOOR(smallestX + boxW/2 - tb.X/2), FLOOR(smallestY - tb.Y - 2))
-            drawing.name.Transparency = transparency
-            drawing.name_outline.Text = topText
-            drawing.name_outline.Font = drawing.name.Font
-            drawing.name_outline.Size = drawing.name.Size
-            drawing.name_outline.Position = drawing.name.Position + NEWVEC2(1,1)
-            drawing.name_outline.Transparency = transparency
-        elseif distText then
-            drawing.distance.Text = distText
-            drawing.distance.Font = Drawing.Fonts[self.font]
-            drawing.distance.Size = self.textsize
-            drawing.distance.Color = self[flag .. 'names'][2]
-            local tb = drawing.distance.TextBounds
-            drawing.distance.Position = NEWVEC2(FLOOR(smallestX + boxW/2 - tb.X/2), FLOOR(smallestY - tb.Y - 2))
-            drawing.distance.Transparency = transparency
-            drawing.distance_outline.Text = distText
-            drawing.distance_outline.Font = drawing.distance.Font
-            drawing.distance_outline.Size = drawing.distance.Size
-            drawing.distance_outline.Position = drawing.distance.Position + NEWVEC2(1,1)
-            drawing.distance_outline.Transparency = transparency
-        end
-
-        -- Health number
-        drawing.health.Visible = health ~= 100 and health ~= 0 and self[flag .. 'health']
-        if drawing.health.Visible then
-            drawing.health.Text = tostring(health)
-            drawing.health.Font = Drawing.Fonts[self.font]
-            drawing.health.Size = self.textsize
-            drawing.health.Outline = self.outlines
-            drawing.health.Color = self[flag .. 'healthbar'][3]:Lerp(self[flag .. 'healthbar'][2], health/100)
-            drawing.health.Position = NEWVEC2(FLOOR(smallestX - 3), FLOOR(drawing.bar.Position.Y + drawing.bar.Size.Y - drawing.health.TextBounds.Y + 5))
-            drawing.health.Transparency = transparency
-        end
-
-        -- Weapon (safe EquippedTool check)
-        drawing.weapon.Visible = self[flag .. 'weapon'][1]
-        drawing.weapon_outline.Visible = self.outlines and drawing.weapon.Visible
-        if drawing.weapon.Visible then
-            local toolName = "None"
-            local equipped = character:FindFirstChild("EquippedTool")
-            if equipped then toolName = LOWER(equipped.Value) or "None" end
-            drawing.weapon.Text = toolName
-            drawing.weapon.Font = Drawing.Fonts[self.font]
-            drawing.weapon.Size = self.textsize
-            drawing.weapon.Color = self[flag .. 'weapon'][2]
-            local tb = drawing.weapon.TextBounds
-            drawing.weapon.Position = NEWVEC2(FLOOR(smallestX + boxW/2 - tb.X/2), FLOOR(biggestY + 4))
-            drawing.weapon.Transparency = transparency
-            drawing.weapon_outline.Text = toolName
-            drawing.weapon_outline.Font = drawing.weapon.Font
-            drawing.weapon_outline.Size = drawing.weapon.Size
-            drawing.weapon_outline.Position = drawing.weapon.Position + NEWVEC2(1,1)
-            drawing.weapon_outline.Transparency = transparency
-        end
+        drawBoxes(name, smallestX, smallestY, biggestX, biggestY)
     end
-end
-
---// Distance fade helper
-function esp:fadeviadistance(data)
-    if not data.limit then return 1 end
-    local dist = (data.cframe.p - camera.CFrame.p).Magnitude
-    local fadeStart = data.maxdistance - data.factor
-    return 1 - math.clamp((dist - fadeStart) / data.factor, 0, 1)
-end
-
-function esp:rotatevector2(v2, r)
-    local c = COS(r)
-    local s = SIN(r)
-    return NEWVEC2(c * v2.X - s * v2.Y, s * v2.X + c * v2.Y)
 end
 
 --// Player add/remove
