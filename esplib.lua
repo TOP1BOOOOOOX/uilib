@@ -142,37 +142,45 @@ end
 function esp.getcharacter(plr)
     local char = plr.Character
     if not char then return nil end
+
+    -- Real parts or dummy references
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local head = char:FindFirstChild("Head")
-    -- Try to find the limb parts; some characters might not have them.
     local ra = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm")
     local la = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftUpperArm")
     local rl = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightUpperLeg")
     local ll = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftUpperLeg")
-    if not (hrp and head) then return char end
+
+    -- Fallback dummy part (prevents nil errors anywhere)
+    local dummyPart = {
+        Position = Vector3.zero,
+        CFrame = CFrame.new(),
+        Size = Vector3.new(1, 1, 1)
+    }
+
+    -- Guarantee HRP and Head exist (even if only a dummy)
+    hrp = hrp or dummyPart
+    head = head or dummyPart
 
     local aliases = {}
-    -- Provide fake positions based on the HumanoidRootPart if a limb is missing.
-    if ra then
-        aliases.RightHand = { Position = ra.Position + ra.CFrame.RightVector * (ra.Size.X / 2 + 0.2), Size = ra.Size }
-    else
-        aliases.RightHand = { Position = hrp.Position + Vector3.new(1, 0, 0), Size = Vector3.new(0, 0, 0) }
+    local function getLimb(part, sign, axis)
+        if part then
+            return {
+                Position = part.Position + sign * part.CFrame.RightVector * (part.Size.X / 2 + 0.2),
+                Size = part.Size
+            }
+        else
+            return {
+                Position = hrp.Position + sign * Vector3.new(1, 0, 0),
+                Size = Vector3.new(0, 0, 0)
+            }
+        end
     end
-    if la then
-        aliases.LeftHand = { Position = la.Position - la.CFrame.RightVector * (la.Size.X / 2 + 0.2), Size = la.Size }
-    else
-        aliases.LeftHand = { Position = hrp.Position - Vector3.new(1, 0, 0), Size = Vector3.new(0, 0, 0) }
-    end
-    if rl then
-        aliases.RightFoot = { Position = rl.Position - rl.CFrame.UpVector * (rl.Size.Y / 2 + 0.2), Size = rl.Size }
-    else
-        aliases.RightFoot = { Position = hrp.Position - Vector3.new(0, 2, 0), Size = Vector3.new(0, 0, 0) }
-    end
-    if ll then
-        aliases.LeftFoot = { Position = ll.Position - ll.CFrame.UpVector * (ll.Size.Y / 2 + 0.2), Size = ll.Size }
-    else
-        aliases.LeftFoot = { Position = hrp.Position - Vector3.new(0, 2, 0), Size = Vector3.new(0, 0, 0) }
-    end
+
+    aliases.RightHand = getLimb(ra, 1)
+    aliases.LeftHand = getLimb(la, -1)
+    aliases.RightFoot = getLimb(rl, 1, true)
+    aliases.LeftFoot = getLimb(ll, -1, true)
 
     local tool = char:FindFirstChildOfClass("Tool")
     if tool then
