@@ -540,21 +540,27 @@ function esp:update()
             end
 
             -- weapon
-            drawing.weapon.Visible = esp[ flag .. 'weapon'][1]
-            drawing.weapon_outline.Visible = esp.outlines and drawing.weapon.Visible
-            if drawing.weapon.Visible then
-                drawing.weapon.Text = LOWER(character.EquippedTool.Value) or nil
-                drawing.weapon.Font = Drawing.Fonts[esp.font]
-                drawing.weapon.Size = esp.textsize
-                drawing.weapon.Color = esp[ flag .. 'weapon'][2]
-                drawing.weapon.Position = esp:floorvector(NEWVEC2(smallestX + (biggestX - smallestX) / 2 - (drawing.weapon.TextBounds.X / 2), biggestY + 4))
-                drawing.weapon.Transparency = transparency
-                drawing.weapon_outline.Text = drawing.weapon.Text
-                drawing.weapon_outline.Font = drawing.weapon.Font
-                drawing.weapon_outline.Size = drawing.weapon.Size
-                drawing.weapon_outline.Position = drawing.weapon.Position + NEWVEC2(1,1)
-                drawing.weapon_outline.Transparency = transparency
-            end
+           -- weapon
+drawing.weapon.Visible = esp[ flag .. 'weapon'][1]
+drawing.weapon_outline.Visible = esp.outlines and drawing.weapon.Visible
+if drawing.weapon.Visible then
+    local toolName = "None"
+    local equipped = character:FindFirstChild("EquippedTool")
+    if equipped then
+        toolName = LOWER(equipped.Value) or "None"
+    end
+    drawing.weapon.Text = toolName
+    drawing.weapon.Font = Drawing.Fonts[esp.font]
+    drawing.weapon.Size = esp.textsize
+    drawing.weapon.Color = esp[ flag .. 'weapon'][2]
+    drawing.weapon.Position = esp:floorvector(NEWVEC2(smallestX + (biggestX - smallestX) / 2 - (drawing.weapon.TextBounds.X / 2), biggestY + 4))
+    drawing.weapon.Transparency = transparency
+    drawing.weapon_outline.Text = drawing.weapon.Text
+    drawing.weapon_outline.Font = drawing.weapon.Font
+    drawing.weapon_outline.Size = drawing.weapon.Size
+    drawing.weapon_outline.Position = drawing.weapon.Position + NEWVEC2(1,1)
+    drawing.weapon_outline.Transparency = transparency
+end
         else
             esp:disable(player)
         end
