@@ -86,7 +86,7 @@ Converted["_sense"].BorderSizePixel = 0
 Converted["_sense"].Position = UDim2.new(0.25, -100, 0.49000001, -13)
 Converted["_sense"].Size = UDim2.new(0, 200, 0, 26)
 Converted["_sense"].Name = "sense"
-Converted["_sense"].Parent = Converted["_watermark bg"]
+Converted["_sense"].Parent = Converted["_watermark"]
 
 Converted["_notifs"].AnchorPoint = Vector2.new(1, 1)
 Converted["_notifs"].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
