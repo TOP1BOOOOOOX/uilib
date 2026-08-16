@@ -319,7 +319,7 @@ local function _watermark_tick()
 
 	print(string.format("[ gamesense.lua ] [ %s ] tick service connected", env["_internal"]["get_time"]()))
 end
-coroutine.wrap(_watermark_tick)()
+--coroutine.wrap(_watermark_tick)()
 --end
 
 local Library = {}
